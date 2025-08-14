@@ -4,7 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { AdminDataManagement } from "@/components/admin-data-management";
 import { AdminAnalytics } from "@/components/admin-analytics";
-import { LogOut, Database, BarChart3 } from "lucide-react";
+import { AdminSettings } from "@/components/admin-settings";
+import {
+	LogOut,
+	Database,
+	BarChart3,
+	Settings,
+} from "lucide-react";
 
 export function AdminDashboard() {
 	const { user, logout } = useAuth();
@@ -65,6 +71,12 @@ export function AdminDashboard() {
 							<BarChart3 className="h-4 w-4" />
 							Analytics
 						</TabsTrigger>
+						<TabsTrigger
+							value="settings"
+							className="flex items-center gap-2">
+							<Settings className="h-4 w-4" />
+							Settings
+						</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value="data">
@@ -73,6 +85,10 @@ export function AdminDashboard() {
 
 					<TabsContent value="analytics">
 						<AdminAnalytics />
+					</TabsContent>
+
+					<TabsContent value="settings">
+						<AdminSettings />
 					</TabsContent>
 				</Tabs>
 			</div>
