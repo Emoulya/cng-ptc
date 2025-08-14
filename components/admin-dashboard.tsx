@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { AdminDataManagement } from "@/components/admin-data-management";
-import { LogOut, Database,} from "lucide-react";
+import { AdminAnalytics } from "@/components/admin-analytics";
+import { LogOut, Database, BarChart3 } from "lucide-react";
 
 export function AdminDashboard() {
 	const { user, logout } = useAuth();
@@ -48,25 +49,31 @@ export function AdminDashboard() {
 
 			{/* Main Content */}
 			<div className="p-6">
-				{/* Mengubah Tabs, menjadikan "data" sebagai default */}
 				<Tabs
 					defaultValue="data"
 					className="space-y-6">
 					<TabsList className="grid w-full grid-cols-3 lg:w-[450px]">
-						{/* Tab "Overview" dihapus */}
 						<TabsTrigger
 							value="data"
 							className="flex items-center gap-2">
 							<Database className="h-4 w-4" />
 							Data Management
 						</TabsTrigger>
+						<TabsTrigger
+							value="analytics"
+							className="flex items-center gap-2">
+							<BarChart3 className="h-4 w-4" />
+							Analytics
+						</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value="data">
-						{/* Komponen Data Management akan berisi semua yang kita butuhkan */}
 						<AdminDataManagement />
 					</TabsContent>
 
+					<TabsContent value="analytics">
+						<AdminAnalytics />
+					</TabsContent>
 				</Tabs>
 			</div>
 		</div>
