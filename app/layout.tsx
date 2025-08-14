@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/use-auth";
 import { DataProvider } from "@/contexts/data-context";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
 	title: "PTC Monitoring System",
@@ -20,7 +21,10 @@ export default function RootLayout({
 			<head></head>
 			<body>
 				<AuthProvider>
-					<DataProvider>{children}</DataProvider>
+					<DataProvider>
+						{children}
+						<Toaster />
+					</DataProvider>
 				</AuthProvider>
 			</body>
 		</html>
