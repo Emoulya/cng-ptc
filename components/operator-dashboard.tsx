@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
 import { CustomerSelector } from "@/components/customer-selector"
+import { DataTable } from "@/components/data-table"
 import { DataEntryForm } from "@/components/data-entry-form"
 import { LogOut, Plus, BarChart3 } from "lucide-react"
 
@@ -107,6 +108,17 @@ export function OperatorDashboard() {
                 </CardHeader>
                 <CardContent>
                   <DataEntryForm customerCode={selectedCustomer} onSuccess={handleDataEntrySuccess} />
+                </CardContent>
+              </Card>
+            )}
+
+            {showDataTable && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Data History - {selectedCustomer}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DataTable customerCode={selectedCustomer} />
                 </CardContent>
               </Card>
             )}
