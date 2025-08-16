@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,78 +16,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useData } from "@/contexts/data-context";
 import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/lib/supabase-client";
 
-// Asumsi Anda akan mengisi data ini dari database nantinya
-const STORAGE_NUMBERS = [
-	"1001",
-	"1002",
-	"1004",
-	"1005",
-	"1007",
-	"1008",
-	"1010",
-	"1011",
-	"1012",
-	"1013",
-	"1014",
-	"1015",
-	"1016",
-	"1017",
-	"1018",
-	"1019",
-	"1020",
-	"1021",
-	"2001",
-	"2002",
-	"2003",
-	"2004",
-	"3001",
-	"3002",
-	"3003",
-	"3004",
-	"107",
-	"108",
-	"109",
-	"110",
-	"111",
-	"112",
-	"113",
-	"115",
-	"118",
-	"119",
-	"201",
-	"203",
-	"303",
-	"304",
-	"305",
-	"306",
-	"307",
-	"308",
-	"401",
-	"402",
-	"403",
-	"404",
-	"405",
-	"501",
-	"502",
-	"503",
-	"504",
-	"505",
-	"506",
-	"507",
-	"508",
-	"509",
-	"510",
-	"511",
-	"512",
-	"KR01",
-	"MX01",
-	"MX02",
-	"EK01",
-	"EK02",
-	"EK03",
-	"EK04",
-];
+interface Storage {
+	storage_number: string;
+}
 
 interface DataEntryFormProps {
 	customerCode: string;
@@ -96,8 +29,11 @@ interface DataEntryFormProps {
 
 export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 	const { addReading } = useData();
-	const { user } = useAuth(); // Kita butuh user.id
+	const { user } = useAuth();
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [storages, setStorages] = useState<Storage[]>([]);
+	const [isLoadingStorages, setIsLoadingStorages] = useState(true);
+
 	const [formData, setFormData] = useState({
 		fixedStorageQuantity: "",
 		storage: "",
@@ -107,6 +43,25 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		flowTurbine: "",
 		remarks: "",
 	});
+
+	useEffect(() => {
+		const fetchStorages = async () => {
+			setIsLoadingStorages(true);
+			const { data, error } = await supabase
+				.from("storages")
+				.select("storage_number")
+				.order("storage_number", { ascending: true });
+
+			if (error) {
+				console.error("Error fetching storages:", error);
+				toast.error("Gagal memuat daftar storage");
+			} else {
+				setStorages(data);
+			}
+			setIsLoadingStorages(false);
+		};
+		fetchStorages();
+	}, []);
 
 	const currentTime = new Date().toLocaleString("id-ID", {
 		timeZone: "Asia/Jakarta",
@@ -119,23 +74,17 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 	});
 
 	const handleInputChange = (field: string, value: string) => {
-		setFormData((prev) => ({
-			...prev,
-			[field]: value,
-		}));
+		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-
 		if (!user) {
 			toast.error("Authentication Error", {
 				description: "User not found. Please log in again.",
 			});
 			return;
 		}
-
-		// Validasi
 		if (
 			!formData.fixedStorageQuantity ||
 			!formData.storage ||
@@ -151,11 +100,10 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		}
 
 		setIsSubmitting(true);
-
 		try {
 			await addReading({
 				customer_code: customerCode,
-				operator_id: user.id, // Menggunakan ID pengguna yang sedang login
+				operator_id: user.id,
 				fixed_storage_quantity: Number.parseInt(
 					formData.fixedStorageQuantity
 				),
@@ -166,12 +114,9 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				flow_turbine: Number.parseFloat(formData.flowTurbine),
 				remarks: formData.remarks,
 			});
-
 			toast.success("Data Saved", {
 				description: `Gas storage data for ${customerCode} has been recorded successfully`,
 			});
-
-			// Reset form
 			setFormData({
 				fixedStorageQuantity: "",
 				storage: "",
@@ -181,7 +126,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				flowTurbine: "",
 				remarks: "",
 			});
-
 			onSuccess?.();
 		} catch (error: any) {
 			toast.error("Error Saving Data", {
@@ -197,8 +141,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		<form
 			onSubmit={handleSubmit}
 			className="space-y-4">
-			{/* Sisanya sama persis, tidak perlu diubah */}
-			{/* ... (Card, Input fields, Button, etc.) ... */}
 			<Card className="bg-green-50 border-green-200">
 				<CardContent className="pt-4">
 					<div className="text-center">
@@ -215,7 +157,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				</CardContent>
 			</Card>
 
-			{/* Fixed Storage Quantity */}
 			<div className="space-y-2">
 				<Label
 					htmlFor="fixedStorageQuantity"
@@ -243,7 +184,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				</Select>
 			</div>
 
-			{/* Storage */}
 			<div className="space-y-2">
 				<Label
 					htmlFor="storage"
@@ -254,23 +194,29 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 					value={formData.storage}
 					onValueChange={(value) =>
 						handleInputChange("storage", value)
-					}>
+					}
+					disabled={isLoadingStorages}>
 					<SelectTrigger>
-						<SelectValue placeholder="Select storage number..." />
+						<SelectValue
+							placeholder={
+								isLoadingStorages
+									? "Memuat storage..."
+									: "Pilih nomor storage..."
+							}
+						/>
 					</SelectTrigger>
 					<SelectContent className="max-h-60">
-						{STORAGE_NUMBERS.map((storage) => (
+						{storages.map((storage) => (
 							<SelectItem
-								key={storage}
-								value={storage}>
-								{storage}
+								key={storage.storage_number}
+								value={storage.storage_number}>
+								{storage.storage_number}
 							</SelectItem>
 						))}
 					</SelectContent>
 				</Select>
 			</div>
 
-			{/* PSI */}
 			<div className="space-y-2">
 				<Label
 					htmlFor="psi"
@@ -288,7 +234,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				/>
 			</div>
 
-			{/* Temperature */}
 			<div className="space-y-2">
 				<Label
 					htmlFor="temp"
@@ -306,7 +251,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				/>
 			</div>
 
-			{/* PSI Out */}
 			<div className="space-y-2">
 				<Label
 					htmlFor="psiOut"
@@ -326,7 +270,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				/>
 			</div>
 
-			{/* Flow/Turbine */}
 			<div className="space-y-2">
 				<Label
 					htmlFor="flowTurbine"
@@ -346,7 +289,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				/>
 			</div>
 
-			{/* Remarks */}
 			<div className="space-y-2">
 				<Label
 					htmlFor="remarks"
@@ -364,7 +306,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				/>
 			</div>
 
-			{/* Submit Button */}
 			<Button
 				type="submit"
 				className="w-full h-12 text-base"
