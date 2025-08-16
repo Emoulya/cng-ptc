@@ -1,185 +1,217 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { TrendingUp, TrendingDown, Minus } from "lucide-react"
+import { useState, useEffect, useMemo } from "react";
+import { useData } from "@/contexts/data-context";
+import type { ReadingWithFlowMeter } from "@/contexts/data-context";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { TrendingUp, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
-// Mock analytics data
-const ANALYTICS_DATA = {
-  totalReadings: 1247,
-  avgPSI: 149.3,
-  avgTemp: 25.7,
-  avgFlow: 122.4,
-  trends: {
-    psi: "up",
-    temp: "stable",
-    flow: "down",
-  },
+interface AnalyticsData {
+	totalReadings: number;
+	avgPSI: number;
+	avgTemp: number;
+	avgFlow: number;
+	topCustomers: { customer: string; readings: number }[];
 }
 
-const TOP_CUSTOMERS = [
-  { customer: "ALM", readings: 156, lastReading: "2024-01-15 14:30:00" },
-  { customer: "BCN", readings: 142, lastReading: "2024-01-15 14:25:00" },
-  { customer: "DKI", readings: 138, lastReading: "2024-01-15 14:20:00" },
-  { customer: "GSJ", readings: 134, lastReading: "2024-01-15 14:15:00" },
-  { customer: "APM", readings: 129, lastReading: "2024-01-15 14:10:00" },
-]
-
 export function AdminAnalytics() {
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case "up":
-        return <TrendingUp className="h-4 w-4 text-green-600" />
-      case "down":
-        return <TrendingDown className="h-4 w-4 text-red-600" />
-      default:
-        return <Minus className="h-4 w-4 text-gray-600" />
-    }
-  }
+	const { getAllReadings } = useData();
+	const [readings, setReadings] = useState<ReadingWithFlowMeter[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
 
-  const getTrendColor = (trend: string) => {
-    switch (trend) {
-      case "up":
-        return "text-green-600"
-      case "down":
-        return "text-red-600"
-      default:
-        return "text-gray-600"
-    }
-  }
+	useEffect(() => {
+		const fetchData = async () => {
+			setIsLoading(true);
+			try {
+				const data = await getAllReadings();
+				setReadings(data);
+			} catch (error: any) {
+				toast.error("Gagal memuat data analitik", {
+					description: error.message,
+				});
+			} finally {
+				setIsLoading(false);
+			}
+		};
+		fetchData();
+	}, [getAllReadings]);
 
-  return (
-    <div className="space-y-6">
-      {/* Analytics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Readings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{ANALYTICS_DATA.totalReadings}</div>
-            <p className="text-xs text-muted-foreground">This month</p>
-          </CardContent>
-        </Card>
+	// Gunakan useMemo untuk menghitung data analitik hanya saat data 'readings' berubah
+	const analyticsData = useMemo<AnalyticsData>(() => {
+		if (readings.length === 0) {
+			return {
+				totalReadings: 0,
+				avgPSI: 0,
+				avgTemp: 0,
+				avgFlow: 0,
+				topCustomers: [],
+			};
+		}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average PSI</CardTitle>
-            {getTrendIcon(ANALYTICS_DATA.trends.psi)}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{ANALYTICS_DATA.avgPSI}</div>
-            <p className={`text-xs ${getTrendColor(ANALYTICS_DATA.trends.psi)}`}>
-              {ANALYTICS_DATA.trends.psi === "up" ? "↑" : ANALYTICS_DATA.trends.psi === "down" ? "↓" : "→"} vs last
-              month
-            </p>
-          </CardContent>
-        </Card>
+		// Hitung rata-rata
+		const totalPSI = readings.reduce((sum, r) => sum + Number(r.psi), 0);
+		const totalTemp = readings.reduce((sum, r) => sum + Number(r.temp), 0);
+		const totalFlow = readings.reduce(
+			(sum, r) => sum + Number(r.flow_turbine),
+			0
+		);
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Temp</CardTitle>
-            {getTrendIcon(ANALYTICS_DATA.trends.temp)}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{ANALYTICS_DATA.avgTemp}°C</div>
-            <p className={`text-xs ${getTrendColor(ANALYTICS_DATA.trends.temp)}`}>
-              {ANALYTICS_DATA.trends.temp === "up" ? "↑" : ANALYTICS_DATA.trends.temp === "down" ? "↓" : "→"} vs last
-              month
-            </p>
-          </CardContent>
-        </Card>
+		// Hitung top customers
+		const customerCounts = readings.reduce((acc, r) => {
+			acc[r.customer_code] = (acc[r.customer_code] || 0) + 1;
+			return acc;
+		}, {} as Record<string, number>);
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Flow</CardTitle>
-            {getTrendIcon(ANALYTICS_DATA.trends.flow)}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{ANALYTICS_DATA.avgFlow}</div>
-            <p className={`text-xs ${getTrendColor(ANALYTICS_DATA.trends.flow)}`}>
-              {ANALYTICS_DATA.trends.flow === "up" ? "↑" : ANALYTICS_DATA.trends.flow === "down" ? "↓" : "→"} vs last
-              month
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+		const topCustomers = Object.entries(customerCounts)
+			.map(([customer, readings]) => ({ customer, readings }))
+			.sort((a, b) => b.readings - a.readings)
+			.slice(0, 5);
 
-      {/* Detailed Analytics */}
-      <div className="grid grid-cols-1 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Active Customers</CardTitle>
-            <CardDescription>Customers with most data entries this month</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {TOP_CUSTOMERS.map((customer, index) => (
-                <div key={customer.customer} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-600">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <Badge variant="outline" className="mb-1">
-                        {customer.customer}
-                      </Badge>
-                      <p className="text-xs text-gray-500">Last: {customer.lastReading}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{customer.readings}</p>
-                    <p className="text-xs text-gray-500">readings</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+		return {
+			totalReadings: readings.length,
+			avgPSI: parseFloat((totalPSI / readings.length).toFixed(1)),
+			avgTemp: parseFloat((totalTemp / readings.length).toFixed(1)),
+			avgFlow: parseFloat((totalFlow / readings.length).toFixed(1)),
+			topCustomers: topCustomers,
+		};
+	}, [readings]);
 
-        {/* <Card>
-          <CardHeader>
-            <CardTitle>Performance Metrics</CardTitle>
-            <CardDescription>System performance and data quality indicators</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-                <div>
-                  <p className="font-medium text-sm text-green-800">Data Completeness</p>
-                  <p className="text-xs text-green-600">All required fields captured</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-green-800">98.5%</p>
-                  <p className="text-xs text-green-600">This month</p>
-                </div>
-              </div>
+	if (isLoading) {
+		return (
+			<div className="flex justify-center items-center py-10">
+				<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+				<p className="ml-3 text-gray-600">
+					Menghitung data analitik...
+				</p>
+			</div>
+		);
+	}
 
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div>
-                  <p className="font-medium text-sm text-blue-800">On-time Reporting</p>
-                  <p className="text-xs text-blue-600">Hourly data submissions</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-blue-800">94.2%</p>
-                  <p className="text-xs text-blue-600">This month</p>
-                </div>
-              </div>
+	return (
+		<div className="space-y-6">
+			{/* Kartu Statistik */}
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">
+							Total Readings
+						</CardTitle>
+						<TrendingUp className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">
+							{analyticsData.totalReadings}
+						</div>
+						<p className="text-xs text-muted-foreground">
+							Sepanjang waktu
+						</p>
+					</CardContent>
+				</Card>
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">
+							Rata-rata PSI
+						</CardTitle>
+						<TrendingUp className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">
+							{analyticsData.avgPSI}
+						</div>
+						<p className="text-xs text-muted-foreground">
+							Rata-rata dari semua data
+						</p>
+					</CardContent>
+				</Card>
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">
+							Rata-rata Temp
+						</CardTitle>
+						<TrendingUp className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">
+							{analyticsData.avgTemp}°C
+						</div>
+						<p className="text-xs text-muted-foreground">
+							Rata-rata dari semua data
+						</p>
+					</CardContent>
+				</Card>
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">
+							Rata-rata Flow
+						</CardTitle>
+						<TrendingUp className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">
+							{analyticsData.avgFlow}
+						</div>
+						<p className="text-xs text-muted-foreground">
+							Rata-rata dari semua data
+						</p>
+					</CardContent>
+				</Card>
+			</div>
 
-              <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                <div>
-                  <p className="font-medium text-sm text-yellow-800">Data Accuracy</p>
-                  <p className="text-xs text-yellow-600">Values within expected ranges</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-yellow-800">91.8%</p>
-                  <p className="text-xs text-yellow-600">This month</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card> */}
-      </div>
-    </div>
-  )
+			{/* Detail Analitik */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Pelanggan Paling Aktif</CardTitle>
+					<CardDescription>
+						Pelanggan dengan jumlah entri data terbanyak
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					{analyticsData.topCustomers.length > 0 ? (
+						<div className="space-y-4">
+							{analyticsData.topCustomers.map(
+								(customer, index) => (
+									<div
+										key={customer.customer}
+										className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+										<div className="flex items-center gap-3">
+											<div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium text-blue-600">
+												{index + 1}
+											</div>
+											<div>
+												<Badge
+													variant="outline"
+													className="mb-1">
+													{customer.customer}
+												</Badge>
+											</div>
+										</div>
+										<div className="text-right">
+											<p className="font-medium">
+												{customer.readings}
+											</p>
+											<p className="text-xs text-gray-500">
+												entri data
+											</p>
+										</div>
+									</div>
+								)
+							)}
+						</div>
+					) : (
+						<p className="text-center text-gray-500 py-4">
+							Belum ada data untuk dianalisis.
+						</p>
+					)}
+				</CardContent>
+			</Card>
+		</div>
+	);
 }
