@@ -1,7 +1,6 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +17,7 @@ import { toast } from "sonner";
 import { useData } from "@/contexts/data-context";
 import { useAuth } from "@/hooks/use-auth";
 
-// Storage numbers from the provided image
+// Asumsi Anda akan mengisi data ini dari database nantinya
 const STORAGE_NUMBERS = [
 	"1001",
 	"1002",
@@ -97,7 +96,7 @@ interface DataEntryFormProps {
 
 export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 	const { addReading } = useData();
-	const { user } = useAuth();
+	const { user } = useAuth(); // Kita butuh user.id
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [formData, setFormData] = useState({
 		fixedStorageQuantity: "",
@@ -128,9 +127,15 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		setIsSubmitting(true);
 
-		// Validate required fields
+		if (!user) {
+			toast.error("Authentication Error", {
+				description: "User not found. Please log in again.",
+			});
+			return;
+		}
+
+		// Validasi
 		if (
 			!formData.fixedStorageQuantity ||
 			!formData.storage ||
@@ -142,23 +147,23 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 			toast.error("Validation Error", {
 				description: "Please fill in all required fields",
 			});
-			setIsSubmitting(false);
 			return;
 		}
 
+		setIsSubmitting(true);
+
 		try {
-			addReading({
-				timestamp: new Date().toISOString(),
-				customer: customerCode,
-				operator: user?.username || "unknown",
-				fixedStorageQuantity: Number.parseInt(
+			await addReading({
+				customer_code: customerCode,
+				operator_id: user.id, // Menggunakan ID pengguna yang sedang login
+				fixed_storage_quantity: Number.parseInt(
 					formData.fixedStorageQuantity
 				),
-				storage: formData.storage,
+				storage_number: formData.storage,
 				psi: Number.parseFloat(formData.psi),
 				temp: Number.parseFloat(formData.temp),
-				psiOut: Number.parseFloat(formData.psiOut),
-				flowTurbine: Number.parseFloat(formData.flowTurbine),
+				psi_out: Number.parseFloat(formData.psiOut),
+				flow_turbine: Number.parseFloat(formData.flowTurbine),
 				remarks: formData.remarks,
 			});
 
@@ -178,20 +183,22 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 			});
 
 			onSuccess?.();
-		} catch (error) {
-			toast.error("Error", {
-				description: "Failed to save data. Please try again.",
+		} catch (error: any) {
+			toast.error("Error Saving Data", {
+				description:
+					error.message || "Failed to save data. Please try again.",
 			});
+		} finally {
+			setIsSubmitting(false);
 		}
-
-		setIsSubmitting(false);
 	};
 
 	return (
 		<form
 			onSubmit={handleSubmit}
 			className="space-y-4">
-			{/* Server Time Display */}
+			{/* Sisanya sama persis, tidak perlu diubah */}
+			{/* ... (Card, Input fields, Button, etc.) ... */}
 			<Card className="bg-green-50 border-green-200">
 				<CardContent className="pt-4">
 					<div className="text-center">

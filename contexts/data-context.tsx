@@ -1,134 +1,146 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, type ReactNode } from "react";
+import { supabase } from "@/lib/supabase-client";
 
-export interface GasStorageReading {
-  id: string
-  timestamp: string
-  customer: string
-  operator: string
-  fixedStorageQuantity: number
-  storage: string
-  psi: number
-  temp: number
-  psiOut: number
-  flowTurbine: number
-  remarks: string
+// Tipe data baru yang sesuai dengan hasil query dari Supabase
+export interface ReadingFromDB {
+	id: number;
+	created_at: string;
+	customer_code: string;
+	storage_number: string;
+	fixed_storage_quantity: number;
+	psi: number;
+	temp: number;
+	psi_out: number;
+	flow_turbine: number;
+	remarks: string | null;
+	// Ini adalah data join dari tabel profiles
+	profiles: {
+		username: string;
+	} | null;
 }
 
-export interface GasStorageReadingWithFlowMeter extends GasStorageReading {
-  flowMeter: number | string
+// Tipe data ini digunakan saat mengirim data BARU ke Supabase
+export interface NewReading {
+	customer_code: string;
+	storage_number: string;
+	operator_id: string; // Sekarang kita pakai ID pengguna
+	fixed_storage_quantity: number;
+	psi: number;
+	temp: number;
+	psi_out: number;
+	flow_turbine: number;
+	remarks: string;
+}
+
+// Tipe data setelah flow_meter dihitung di client
+export interface ReadingWithFlowMeter extends ReadingFromDB {
+	flowMeter: number | string;
 }
 
 interface DataContextType {
-  readings: GasStorageReading[]
-  addReading: (reading: Omit<GasStorageReading, "id">) => void
-  getReadingsByCustomer: (customer: string) => GasStorageReadingWithFlowMeter[]
-  getAllReadings: () => GasStorageReadingWithFlowMeter[]
-  deleteReading: (id: string) => void
-  clearAllData: () => void
+	addReading: (reading: NewReading) => Promise<void>;
+	getReadingsByCustomer: (
+		customerCode: string
+	) => Promise<ReadingWithFlowMeter[]>;
+	getAllReadings: () => Promise<ReadingWithFlowMeter[]>;
+	deleteReading: (id: number) => Promise<void>;
 }
 
-const DataContext = createContext<DataContextType | undefined>(undefined)
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+// Fungsi helper untuk kalkulasi flow meter tetap sama, tapi inputnya berubah
+const calculateFlowMeter = (
+	readingsArray: ReadingFromDB[]
+): ReadingWithFlowMeter[] => {
+	const sortedReadings = [...readingsArray].sort(
+		(a, b) =>
+			new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+	);
+
+	return sortedReadings.map((reading, index) => {
+		const previousReading = sortedReadings
+			.slice(0, index)
+			.reverse()
+			.find((r) => r.storage_number === reading.storage_number);
+
+		let flowMeter: number | string = "-";
+
+		if (previousReading) {
+			const difference =
+				reading.flow_turbine - previousReading.flow_turbine;
+			flowMeter = difference >= 0 ? difference : "-";
+		}
+
+		return {
+			...reading,
+			flowMeter,
+		};
+	});
+};
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [readings, setReadings] = useState<GasStorageReading[]>([])
+	const addReading = async (reading: NewReading) => {
+		const { error } = await supabase.from("readings").insert(reading);
+		if (error) throw error;
+	};
 
-  // Load data from localStorage on mount
-  useEffect(() => {
-    const savedData = localStorage.getItem("ptc-gas-readings")
-    if (savedData) {
-      try {
-        setReadings(JSON.parse(savedData))
-      } catch (error) {
-        console.error("Error loading saved data:", error)
-      }
-    }
-  }, [])
+	const getReadingsByCustomer = async (
+		customerCode: string
+	): Promise<ReadingWithFlowMeter[]> => {
+		const { data, error } = await supabase
+			.from("readings")
+			.select(`*, profiles(username)`) // Mengambil username dari tabel profiles
+			.eq("customer_code", customerCode)
+			.order("created_at", { ascending: false });
 
-  // Save data to localStorage whenever readings change
-  useEffect(() => {
-    localStorage.setItem("ptc-gas-readings", JSON.stringify(readings))
-  }, [readings])
+		if (error) {
+			console.error("Error fetching readings by customer:", error);
+			return [];
+		}
 
-  const calculateFlowMeter = (readingsArray: GasStorageReading[]): GasStorageReadingWithFlowMeter[] => {
-    // Sort readings by timestamp to ensure proper order
-    const sortedReadings = [...readingsArray].sort(
-      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-    )
+		return calculateFlowMeter(data as ReadingFromDB[]);
+	};
 
-    return sortedReadings.map((reading, index) => {
-      // Find the previous reading for the same storage number
-      const previousReading = sortedReadings
-        .slice(0, index)
-        .reverse()
-        .find((r) => r.storage === reading.storage)
+	const getAllReadings = async (): Promise<ReadingWithFlowMeter[]> => {
+		const { data, error } = await supabase
+			.from("readings")
+			.select(`*, profiles(username)`)
+			.order("created_at", { ascending: false });
 
-      let flowMeter: number | string = "-"
+		if (error) {
+			console.error("Error fetching all readings:", error);
+			return [];
+		}
+		return calculateFlowMeter(data as ReadingFromDB[]);
+	};
 
-      if (previousReading) {
-        try {
-          // Calculate difference between current and previous Flow/Turbine values
-          const difference = reading.flowTurbine - previousReading.flowTurbine
-          flowMeter = difference >= 0 ? difference : "-"
-        } catch (error) {
-          flowMeter = "-"
-        }
-      }
+	const deleteReading = async (id: number) => {
+		const { error } = await supabase
+			.from("readings")
+			.delete()
+			.match({ id });
+		if (error) throw error;
+	};
 
-      return {
-        ...reading,
-        flowMeter,
-      }
-    })
-  }
-
-  const addReading = (reading: Omit<GasStorageReading, "id">) => {
-    const newReading: GasStorageReading = {
-      ...reading,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-    }
-    setReadings((prev) => [newReading, ...prev])
-  }
-
-  const getReadingsByCustomer = (customer: string): GasStorageReadingWithFlowMeter[] => {
-    const customerReadings = readings.filter((reading) => reading.customer === customer)
-    return calculateFlowMeter(customerReadings)
-  }
-
-  const getAllReadings = (): GasStorageReadingWithFlowMeter[] => {
-    return calculateFlowMeter(readings)
-  }
-
-  const deleteReading = (id: string) => {
-    setReadings((prev) => prev.filter((reading) => reading.id !== id))
-  }
-
-  const clearAllData = () => {
-    setReadings([])
-    localStorage.removeItem("ptc-gas-readings")
-  }
-
-  return (
-    <DataContext.Provider
-      value={{
-        readings,
-        addReading,
-        getReadingsByCustomer,
-        getAllReadings,
-        deleteReading,
-        clearAllData,
-      }}
-    >
-      {children}
-    </DataContext.Provider>
-  )
+	return (
+		<DataContext.Provider
+			value={{
+				addReading,
+				getReadingsByCustomer,
+				getAllReadings,
+				deleteReading,
+			}}>
+			{children}
+		</DataContext.Provider>
+	);
 }
 
 export function useData() {
-  const context = useContext(DataContext)
-  if (context === undefined) {
-    throw new Error("useData must be used within a DataProvider")
-  }
-  return context
+	const context = useContext(DataContext);
+	if (context === undefined) {
+		throw new Error("useData must be used within a DataProvider");
+	}
+	return context;
 }
