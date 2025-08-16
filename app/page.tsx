@@ -1,3 +1,4 @@
+import React from "react"; // Tambahkan baris ini
 import { LoginForm } from "@/components/login-form";
 
 export default function HomePage() {
