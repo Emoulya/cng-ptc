@@ -46,6 +46,7 @@ interface DataContextType {
 	) => Promise<ReadingWithFlowMeter[]>;
 	getAllReadings: () => Promise<ReadingWithFlowMeter[]>;
 	deleteReading: (id: number) => Promise<void>;
+	clearAllData: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -124,6 +125,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
 		if (error) throw error;
 	};
 
+	const clearAllData = async () => {
+		// Ini adalah cara sederhana untuk menghapus semua data.
+		// Untuk keamanan lebih, di masa depan ini bisa diubah menjadi satu panggilan
+		// ke PostgreSQL function di server yang hanya bisa diakses admin.
+		const { data: allIds, error: fetchError } = await supabase
+			.from("readings")
+			.select("id");
+
+		if (fetchError) throw fetchError;
+
+		if (allIds && allIds.length > 0) {
+			const idsToDelete = allIds.map((item) => item.id);
+			const { error: deleteError } = await supabase
+				.from("readings")
+				.delete()
+				.in("id", idsToDelete);
+			if (deleteError) throw deleteError;
+		}
+	};
+
 	return (
 		<DataContext.Provider
 			value={{
@@ -131,6 +152,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 				getReadingsByCustomer,
 				getAllReadings,
 				deleteReading,
+				clearAllData,
 			}}>
 			{children}
 		</DataContext.Provider>

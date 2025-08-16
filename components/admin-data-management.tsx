@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
 	Card,
 	CardContent,
@@ -38,40 +38,70 @@ import {
 	AlertTriangle,
 } from "lucide-react";
 import { useData } from "@/contexts/data-context";
+import type { ReadingWithFlowMeter } from "@/contexts/data-context";
 import * as XLSX from "xlsx";
 
 export function AdminDataManagement() {
+	const [allReadings, setAllReadings] = useState<ReadingWithFlowMeter[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedCustomer, setSelectedCustomer] = useState("all");
 	const [selectedOperator, setSelectedOperator] = useState("all");
 	const [isExporting, setIsExporting] = useState(false);
 
 	const { getAllReadings } = useData();
-	const allReadings = getAllReadings();
 
-	const uniqueCustomers = Array.from(
-		new Set(allReadings.map((r) => r.customer))
-	);
-	const uniqueOperators = Array.from(
-		new Set(allReadings.map((r) => r.operator))
-	);
-	const todayReadings = allReadings.filter((r) => {
+	useEffect(() => {
+		const fetchInitialData = async () => {
+			setIsLoading(true);
+			try {
+				const data = await getAllReadings();
+				setAllReadings(data);
+			} catch (error) {
+				console.error("Failed to fetch admin data:", error);
+			} finally {
+				setIsLoading(false);
+			}
+		};
+		fetchInitialData();
+	}, [getAllReadings]);
+
+	const { uniqueCustomers, uniqueOperators, todayReadings } = useMemo(() => {
+		const customers = Array.from(
+			new Set(allReadings.map((r) => r.customer_code))
+		);
+		const operators = Array.from(
+			new Set(allReadings.map((r) => r.profiles?.username || "Unknown"))
+		);
 		const today = new Date().toDateString();
-		const readingDate = new Date(r.timestamp).toDateString();
-		return today === readingDate;
-	}).length;
+		const readingsToday = allReadings.filter(
+			(r) => new Date(r.created_at).toDateString() === today
+		).length;
+		return {
+			uniqueCustomers: customers,
+			uniqueOperators: operators,
+			todayReadings: readingsToday,
+		};
+	}, [allReadings]);
 
-	const filteredData = allReadings.filter((item) => {
-		const matchesSearch =
-			item.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			item.operator.toLowerCase().includes(searchTerm.toLowerCase());
-		const matchesCustomer =
-			selectedCustomer === "all" || item.customer === selectedCustomer;
-		const matchesOperator =
-			selectedOperator === "all" || item.operator === selectedOperator;
-
-		return matchesSearch && matchesCustomer && matchesOperator;
-	});
+	const filteredData = useMemo(() => {
+		return allReadings.filter((item) => {
+			const operatorUsername =
+				item.profiles?.username?.toLowerCase() || "";
+			const matchesSearch =
+				item.customer_code
+					.toLowerCase()
+					.includes(searchTerm.toLowerCase()) ||
+				operatorUsername.includes(searchTerm.toLowerCase());
+			const matchesCustomer =
+				selectedCustomer === "all" ||
+				item.customer_code === selectedCustomer;
+			const matchesOperator =
+				selectedOperator === "all" ||
+				item.profiles?.username === selectedOperator;
+			return matchesSearch && matchesCustomer && matchesOperator;
+		});
+	}, [allReadings, searchTerm, selectedCustomer, selectedOperator]);
 
 	const formatDateTimeForDisplay = (timestamp: string) => {
 		const date = new Date(timestamp);
@@ -88,16 +118,26 @@ export function AdminDataManagement() {
 		};
 	};
 
+	// --- FUNGSI HANDLE EXPORT ---
 	const handleExport = async () => {
-		// (Fungsi export Anda yang sudah ada tetap di sini, tidak perlu diubah)
+		if (filteredData.length === 0) {
+			alert("Tidak ada data untuk diekspor.");
+			return;
+		}
 		setIsExporting(true);
 		try {
+			// Mengambil file template dari folder public
 			const response = await fetch("/template-laporan.xlsm");
+			if (!response.ok) {
+				throw new Error(
+					"Gagal memuat file template. Pastikan file 'template-laporan.xlsm' ada di dalam folder /public."
+				);
+			}
 			const arrayBuffer = await response.arrayBuffer();
 			const workbook = XLSX.read(arrayBuffer, { type: "buffer" });
 
 			const customersToExport = Array.from(
-				new Set(filteredData.map((r) => r.customer))
+				new Set(filteredData.map((r) => r.customer_code))
 			);
 			const templateSheetName = "sheet1";
 			const templateWorksheet = workbook.Sheets[templateSheetName];
@@ -110,14 +150,14 @@ export function AdminDataManagement() {
 			customersToExport.forEach((customer) => {
 				const newSheet = JSON.parse(JSON.stringify(templateWorksheet));
 				const customerData = filteredData.filter(
-					(row) => row.customer === customer
+					(row) => row.customer_code === customer
 				);
 
 				const dataForSheet = customerData.map((row) => {
-					const timestampDate = new Date(row.timestamp);
-					const storageAsNumber = isNaN(parseInt(row.storage))
-						? row.storage
-						: parseInt(row.storage);
+					const timestampDate = new Date(row.created_at);
+					const storageAsNumber = isNaN(parseInt(row.storage_number))
+						? row.storage_number
+						: parseInt(row.storage_number);
 					const flowMeterAsNumber =
 						typeof row.flowMeter === "string"
 							? row.flowMeter
@@ -128,14 +168,14 @@ export function AdminDataManagement() {
 						null,
 						null,
 						null,
-						Number(row.fixedStorageQuantity),
+						Number(row.fixed_storage_quantity),
 						storageAsNumber,
-						timestampDate,
-						timestampDate,
+						timestampDate, // Kolom G (Date)
+						timestampDate, // Kolom H (Time)
 						Number(row.psi),
 						Number(row.temp),
-						Number(row.psiOut),
-						Number(row.flowTurbine),
+						Number(row.psi_out),
+						Number(row.flow_turbine),
 						flowMeterAsNumber,
 						null,
 						null,
@@ -149,14 +189,13 @@ export function AdminDataManagement() {
 					cellDates: true,
 				});
 
-				customerData.forEach((row, rowIndex) => {
+				// Set format tanggal dan waktu secara eksplisit
+				customerData.forEach((_, rowIndex) => {
 					const currentRow = 10 + rowIndex;
-
 					const dateCellAddress = `G${currentRow}`;
 					if (newSheet[dateCellAddress]) {
 						newSheet[dateCellAddress].z = "dd/mm/yyyy";
 					}
-
 					const timeCellAddress = `H${currentRow}`;
 					if (newSheet[timeCellAddress]) {
 						newSheet[timeCellAddress].z = "hh:mm:ss";
@@ -166,6 +205,7 @@ export function AdminDataManagement() {
 				XLSX.utils.book_append_sheet(workbook, newSheet, customer);
 			});
 
+			// Hapus sheet template setelah selesai
 			delete workbook.Sheets[templateSheetName];
 			workbook.SheetNames = workbook.SheetNames.filter(
 				(name) => name !== templateSheetName
@@ -191,6 +231,7 @@ export function AdminDataManagement() {
 
 	return (
 		<div className="space-y-6">
+			{/* Kartu Statistik di Atas */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -361,9 +402,6 @@ export function AdminDataManagement() {
 									<TableHeader>
 										<TableRow>
 											<TableHead>Customer</TableHead>
-											<TableHead>
-												Jumlah Fix Storage
-											</TableHead>
 											<TableHead>Storage</TableHead>
 											<TableHead>Date</TableHead>
 											<TableHead>Time</TableHead>
@@ -377,10 +415,18 @@ export function AdminDataManagement() {
 										</TableRow>
 									</TableHeader>
 									<TableBody>
-										{filteredData.length === 0 ? (
+										{isLoading ? (
 											<TableRow>
 												<TableCell
-													colSpan={12}
+													colSpan={11}
+													className="text-center py-8">
+													<Loader2 className="h-6 w-6 animate-spin mx-auto" />
+												</TableCell>
+											</TableRow>
+										) : filteredData.length === 0 ? (
+											<TableRow>
+												<TableCell
+													colSpan={11}
 													className="text-center text-gray-500 py-8">
 													No entries match your
 													filters
@@ -390,22 +436,19 @@ export function AdminDataManagement() {
 											filteredData.map((row) => {
 												const { date, time } =
 													formatDateTimeForDisplay(
-														row.timestamp
+														row.created_at
 													);
 												return (
 													<TableRow key={row.id}>
 														<TableCell>
 															<Badge variant="outline">
-																{row.customer}
+																{
+																	row.customer_code
+																}
 															</Badge>
 														</TableCell>
 														<TableCell>
-															{
-																row.fixedStorageQuantity
-															}
-														</TableCell>
-														<TableCell>
-															{row.storage}
+															{row.storage_number}
 														</TableCell>
 														<TableCell className="font-mono text-sm">
 															{date}
@@ -414,22 +457,28 @@ export function AdminDataManagement() {
 															{time}
 														</TableCell>
 														<TableCell>
-															{row.psi}
+															{String(row.psi)}
 														</TableCell>
 														<TableCell>
-															{row.temp}°C
+															{String(row.temp)}°C
 														</TableCell>
 														<TableCell>
-															{row.psiOut}
+															{String(
+																row.psi_out
+															)}
 														</TableCell>
 														<TableCell>
-															{row.flowTurbine}
+															{String(
+																row.flow_turbine
+															)}
 														</TableCell>
 														<TableCell className="font-mono">
 															{row.flowMeter}
 														</TableCell>
 														<TableCell>
-															{row.operator}
+															{row.profiles
+																?.username ||
+																"N/A"}
 														</TableCell>
 														<TableCell className="max-w-[200px] truncate">
 															{row.remarks || "-"}
