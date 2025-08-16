@@ -15,7 +15,6 @@ export interface ReadingFromDB {
 	psi_out: number;
 	flow_turbine: number;
 	remarks: string | null;
-	// Ini adalah data join dari tabel profiles
 	profiles: {
 		username: string;
 	} | null;
@@ -23,9 +22,10 @@ export interface ReadingFromDB {
 
 // Tipe data ini digunakan saat mengirim data BARU ke Supabase
 export interface NewReading {
+	created_at: string;
 	customer_code: string;
 	storage_number: string;
-	operator_id: string; // Sekarang kita pakai ID pengguna
+	operator_id: string;
 	fixed_storage_quantity: number;
 	psi: number;
 	temp: number;
@@ -92,7 +92,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 	): Promise<ReadingWithFlowMeter[]> => {
 		const { data, error } = await supabase
 			.from("readings")
-			.select(`*, profiles(username)`) // Mengambil username dari tabel profiles
+			.select(`*, profiles(username)`)
 			.eq("customer_code", customerCode)
 			.order("created_at", { ascending: false });
 

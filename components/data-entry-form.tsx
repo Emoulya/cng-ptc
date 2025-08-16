@@ -27,6 +27,12 @@ interface DataEntryFormProps {
 	onSuccess?: () => void;
 }
 
+// Membuat daftar opsi jam dari "00:00" sampai "23:00"
+const hourOptions = Array.from({ length: 24 }, (_, i) => {
+	const hour = i.toString().padStart(2, "0");
+	return `${hour}:00`;
+});
+
 export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 	const { addReading } = useData();
 	const { user } = useAuth();
@@ -35,6 +41,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 	const [isLoadingStorages, setIsLoadingStorages] = useState(true);
 
 	const [formData, setFormData] = useState({
+		recordingHour: "",
 		fixedStorageQuantity: "",
 		storage: "",
 		psi: "",
@@ -63,14 +70,12 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		fetchStorages();
 	}, []);
 
-	const currentTime = new Date().toLocaleString("id-ID", {
+	const currentDate = new Date().toLocaleDateString("id-ID", {
 		timeZone: "Asia/Jakarta",
 		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-		second: "2-digit",
+		month: "long",
+		day: "numeric",
+		weekday: "long",
 	});
 
 	const handleInputChange = (field: string, value: string) => {
@@ -85,7 +90,9 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 			});
 			return;
 		}
+		// Validasi, tambahkan recordingHour
 		if (
+			!formData.recordingHour ||
 			!formData.fixedStorageQuantity ||
 			!formData.storage ||
 			!formData.psi ||
@@ -94,14 +101,22 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 			!formData.flowTurbine
 		) {
 			toast.error("Validation Error", {
-				description: "Please fill in all required fields",
+				description: "Mohon isi semua field yang ditandai bintang (*)",
 			});
 			return;
 		}
 
 		setIsSubmitting(true);
 		try {
+			const today = new Date();
+			const [hour, minute] = formData.recordingHour
+				.split(":")
+				.map(Number);
+			today.setHours(hour, minute, 0, 0);
+			const finalTimestamp = today.toISOString();
+
 			await addReading({
+				created_at: finalTimestamp,
 				customer_code: customerCode,
 				operator_id: user.id,
 				fixed_storage_quantity: Number.parseInt(
@@ -114,10 +129,13 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				flow_turbine: Number.parseFloat(formData.flowTurbine),
 				remarks: formData.remarks,
 			});
-			toast.success("Data Saved", {
-				description: `Gas storage data for ${customerCode} has been recorded successfully`,
+			toast.success("Data Tersimpan", {
+				description: `Data untuk jam ${formData.recordingHour} berhasil dicatat.`,
 			});
+
 			setFormData({
+				// Reset form
+				recordingHour: "",
 				fixedStorageQuantity: "",
 				storage: "",
 				psi: "",
@@ -126,11 +144,11 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				flowTurbine: "",
 				remarks: "",
 			});
+
 			onSuccess?.();
 		} catch (error: any) {
-			toast.error("Error Saving Data", {
-				description:
-					error.message || "Failed to save data. Please try again.",
+			toast.error("Gagal Menyimpan Data", {
+				description: error.message || "Terjadi kesalahan. Coba lagi.",
 			});
 		} finally {
 			setIsSubmitting(false);
@@ -141,48 +159,21 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		<form
 			onSubmit={handleSubmit}
 			className="space-y-4">
-			<Card className="bg-green-50 border-green-200">
+			<Card className="bg-blue-50 border-blue-200">
 				<CardContent className="pt-4">
 					<div className="text-center">
-						<p className="text-sm text-green-700 font-medium">
-							Recording Time
+						<p className="text-sm text-blue-700 font-medium">
+							Tanggal Pencatatan
 						</p>
-						<p className="text-lg font-mono font-bold text-green-800">
-							{currentTime}
+						<p className="text-lg font-mono font-bold text-blue-800">
+							{currentDate}
 						</p>
-						<p className="text-xs text-green-600">
-							WIB (Auto-generated)
+						<p className="text-xs text-blue-600">
+							(Tanggal hari ini, tidak bisa diubah)
 						</p>
 					</div>
 				</CardContent>
 			</Card>
-
-			<div className="space-y-2">
-				<Label
-					htmlFor="fixedStorageQuantity"
-					className="text-sm font-medium">
-					Fixed Storage Quantity{" "}
-					<span className="text-red-500">*</span>
-				</Label>
-				<Select
-					value={formData.fixedStorageQuantity}
-					onValueChange={(value) =>
-						handleInputChange("fixedStorageQuantity", value)
-					}>
-					<SelectTrigger>
-						<SelectValue placeholder="Select quantity..." />
-					</SelectTrigger>
-					<SelectContent>
-						{[1, 2, 3, 4, 5].map((num) => (
-							<SelectItem
-								key={num}
-								value={num.toString()}>
-								{num}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			</div>
 
 			<div className="space-y-2">
 				<Label
@@ -200,7 +191,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 						<SelectValue
 							placeholder={
 								isLoadingStorages
-									? "Memuat storage..."
+									? "Memuat..."
 									: "Pilih nomor storage..."
 							}
 						/>
@@ -219,6 +210,58 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 
 			<div className="space-y-2">
 				<Label
+					htmlFor="fixedStorageQuantity"
+					className="text-sm font-medium">
+					Jumlah Fix Storage <span className="text-red-500">*</span>
+				</Label>
+				<Select
+					value={formData.fixedStorageQuantity}
+					onValueChange={(value) =>
+						handleInputChange("fixedStorageQuantity", value)
+					}>
+					<SelectTrigger>
+						<SelectValue placeholder="Pilih jumlah..." />
+					</SelectTrigger>
+					<SelectContent>
+						{[1, 2, 3, 4, 5].map((num) => (
+							<SelectItem
+								key={num}
+								value={num.toString()}>
+								{num}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
+
+			<div className="space-y-2">
+				<Label
+					htmlFor="recordingHour"
+					className="text-sm font-medium">
+					Jam Pencatatan <span className="text-red-500">*</span>
+				</Label>
+				<Select
+					value={formData.recordingHour}
+					onValueChange={(value) =>
+						handleInputChange("recordingHour", value)
+					}>
+					<SelectTrigger>
+						<SelectValue placeholder="Pilih jam pencatatan..." />
+					</SelectTrigger>
+					<SelectContent className="max-h-60">
+						{hourOptions.map((hour) => (
+							<SelectItem
+								key={hour}
+								value={hour}>
+								{hour}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
+
+			<div className="space-y-2">
+				<Label
 					htmlFor="psi"
 					className="text-sm font-medium">
 					PSI <span className="text-red-500">*</span>
@@ -227,7 +270,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 					id="psi"
 					type="number"
 					step="0.1"
-					placeholder="Enter PSI value"
+					placeholder="Masukkan nilai PSI"
 					value={formData.psi}
 					onChange={(e) => handleInputChange("psi", e.target.value)}
 					className="text-base"
@@ -238,13 +281,13 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				<Label
 					htmlFor="temp"
 					className="text-sm font-medium">
-					Temperature (°C) <span className="text-red-500">*</span>
+					Temperatur (°C) <span className="text-red-500">*</span>
 				</Label>
 				<Input
 					id="temp"
 					type="number"
 					step="0.1"
-					placeholder="Enter temperature"
+					placeholder="Masukkan temperatur"
 					value={formData.temp}
 					onChange={(e) => handleInputChange("temp", e.target.value)}
 					className="text-base"
@@ -261,7 +304,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 					id="psiOut"
 					type="number"
 					step="0.1"
-					placeholder="Enter PSI Out value"
+					placeholder="Masukkan nilai PSI Out"
 					value={formData.psiOut}
 					onChange={(e) =>
 						handleInputChange("psiOut", e.target.value)
@@ -274,13 +317,13 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				<Label
 					htmlFor="flowTurbine"
 					className="text-sm font-medium">
-					Flow/Turbine <span className="text-red-500">*</span>
+					Flow/Turbin <span className="text-red-500">*</span>
 				</Label>
 				<Input
 					id="flowTurbine"
 					type="number"
 					step="0.1"
-					placeholder="Enter flow/turbine value"
+					placeholder="Masukkan nilai flow/turbin"
 					value={formData.flowTurbine}
 					onChange={(e) =>
 						handleInputChange("flowTurbine", e.target.value)
@@ -293,11 +336,11 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				<Label
 					htmlFor="remarks"
 					className="text-sm font-medium">
-					Remarks
+					Keterangan
 				</Label>
 				<Textarea
 					id="remarks"
-					placeholder="Enter any remarks or observations..."
+					placeholder="Masukkan keterangan atau observasi..."
 					value={formData.remarks}
 					onChange={(e) =>
 						handleInputChange("remarks", e.target.value)
@@ -310,7 +353,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				type="submit"
 				className="w-full h-12 text-base"
 				disabled={isSubmitting}>
-				{isSubmitting ? "Saving Data..." : "Save Gas Storage Data"}
+				{isSubmitting ? "Menyimpan Data..." : "Simpan Data Gas Storage"}
 			</Button>
 		</form>
 	);

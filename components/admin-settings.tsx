@@ -23,7 +23,7 @@ export function AdminSettings() {
 			{/* Bagian Manajemen Storage */}
 			<StorageManagement />
 
-			{/* Bagian Manajemen Akun Operator (yang sudah ada) */}
+			{/* Bagian Manajemen Akun Operator */}
 			<Card>
 				<CardHeader>
 					<CardTitle>Manajemen Akun Operator</CardTitle>

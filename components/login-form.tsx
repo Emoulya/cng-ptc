@@ -42,7 +42,6 @@ export function LoginForm() {
 		}
 	};
 
-	// Ganti `React.useEffect` menjadi `useEffect`
 	useEffect(() => {
 		if (user) {
 			if (user.role === "operator") {
