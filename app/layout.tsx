@@ -6,6 +6,7 @@ import { GeistMono } from "geist/font/mono";
 import { AuthProvider } from "@/hooks/use-auth";
 import { DataProvider } from "@/contexts/data-context";
 import { Toaster } from "@/components/ui/sonner";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
 	title: "PTC Monitoring System",
@@ -30,10 +31,12 @@ html {
 			</head>
 			<body>
 				<AuthProvider>
-					<DataProvider>
-						{children}
-						<Toaster />
-					</DataProvider>
+					<Providers>
+						<DataProvider>
+							{children}
+							<Toaster />
+						</DataProvider>
+					</Providers>
 				</AuthProvider>
 			</body>
 		</html>

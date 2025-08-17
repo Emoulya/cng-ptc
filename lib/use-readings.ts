@@ -1,0 +1,67 @@
+"use client";
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+	getAllReadings,
+	addReading,
+	deleteReading,
+	getReadingsByCustomer,
+} from "@/lib/api";
+import { toast } from "sonner";
+import type { NewReading } from "@/types/data";
+
+// Hook untuk mendapatkan SEMUA data readings
+export const useAllReadings = () => {
+	return useQuery({
+		queryKey: ["readings"],
+		queryFn: getAllReadings,
+	});
+};
+
+// Hook untuk mendapatkan data readings berdasarkan customer
+export const useReadingsByCustomer = (customerCode: string) => {
+	return useQuery({
+		queryKey: ["readings", customerCode],
+		queryFn: () => getReadingsByCustomer(customerCode),
+		enabled: !!customerCode,
+	});
+};
+
+// Hook untuk MENAMBAH data reading baru
+export const useAddReading = () => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (newReading: NewReading) => addReading(newReading),
+		onSuccess: (_, variables) => {
+			const hour = new Date(variables.created_at)
+				.getHours()
+				.toString()
+				.padStart(2, "0");
+			toast.success("Data Tersimpan", {
+				description: `Data untuk jam ${hour}:00 berhasil dicatat.`,
+			});
+			// Invalidate queries agar data di UI otomatis ter-update
+			queryClient.invalidateQueries({ queryKey: ["readings"] });
+		},
+		onError: (error: Error) => {
+			toast.error("Gagal Menyimpan Data", {
+				description: error.message || "Terjadi kesalahan. Coba lagi.",
+			});
+		},
+	});
+};
+
+// Hook untuk MENGHAPUS satu data reading
+export const useDeleteReading = () => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (id: number) => deleteReading(id),
+		onSuccess: () => {
+			// Tidak perlu toast di sini karena akan di-handle di BulkOperations
+			queryClient.invalidateQueries({ queryKey: ["readings"] });
+		},
+		onError: (error: Error) => {
+			toast.error("Gagal Menghapus Data", { description: error.message });
+		},
+	});
+};
