@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
 	Card,
 	CardContent,
@@ -12,93 +12,87 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Trash2, ShieldAlert, Loader2 } from "lucide-react";
-import { useData } from "@/contexts/data-context";
-import type { ReadingWithFlowMeter } from "@/contexts/data-context";
+import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
+import { supabase } from "@/lib/supabase-client";
 
 export function BulkOperations() {
-	const { getAllReadings, deleteReading, clearAllData } = useData();
-	const [allReadings, setAllReadings] = useState<ReadingWithFlowMeter[]>([]);
+	const { data: allReadings = [], isLoading } = useAllReadings();
+	const { mutate: deleteReading, isPending: isDeletingSingle } =
+		useDeleteReading();
+
+	// State lokal untuk UI
 	const [selectedItems, setSelectedItems] = useState<number[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isDeleting, setIsDeleting] = useState(false);
-
-	const fetchAllData = async () => {
-		setIsLoading(true);
-		try {
-			const data = await getAllReadings();
-			setAllReadings(data);
-		} catch (error) {
-			toast.error("Failed to load data");
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
-	useEffect(() => {
-		fetchAllData();
-	}, []); // Dependensi kosong agar hanya berjalan sekali saat komponen dimuat
+	const [isDeletingAll, setIsDeletingAll] = useState(false);
 
 	const handleSelectAll = (checked: boolean) => {
-		if (checked) {
-			setSelectedItems(allReadings.map((item) => item.id));
-		} else {
-			setSelectedItems([]);
-		}
+		setSelectedItems(checked ? allReadings.map((item) => item.id) : []);
 	};
 
 	const handleSelectItem = (id: number, checked: boolean) => {
-		if (checked) {
-			setSelectedItems([...selectedItems, id]);
-		} else {
-			setSelectedItems(selectedItems.filter((item) => item !== id));
-		}
+		setSelectedItems(
+			checked
+				? [...selectedItems, id]
+				: selectedItems.filter((item) => item !== id)
+		);
 	};
 
 	const handleDeleteSelected = async () => {
 		if (selectedItems.length === 0) {
-			toast.warning("No Data Selected", {
-				description: "Please select the data you want to delete.",
+			toast.warning("Tidak ada data yang dipilih", {
+				description: "Silakan pilih data yang ingin Anda hapus.",
 			});
 			return;
 		}
 
-		setIsDeleting(true);
-		try {
-			// Hapus satu per satu
-			await Promise.all(selectedItems.map((id) => deleteReading(id)));
+		// Promise.all agar semua proses delete berjalan paralel
+		await Promise.all(selectedItems.map((id) => deleteReading(id)));
 
-			toast.success("Data Deleted", {
-				description: `Successfully deleted ${selectedItems.length} data entries.`,
-			});
-
-			// Reset state dan muat ulang data
-			setSelectedItems([]);
-			await fetchAllData();
-		} catch (error: any) {
-			toast.error("Deletion Failed", { description: error.message });
-		} finally {
-			setIsDeleting(false);
-		}
+		toast.success("Data Terhapus", {
+			description: `Berhasil menghapus ${selectedItems.length} entri data.`,
+		});
+		setSelectedItems([]); // Reset pilihan
 	};
 
 	const handleClearAllData = async () => {
+		// Fungsi ini spesifik dan jarang, jadi logikanya bisa tetap di sini
 		if (
 			confirm(
-				"ARE YOU SURE? All monitoring data will be permanently deleted and cannot be recovered."
+				"APAKAH ANDA YAKIN? Semua data monitoring akan dihapus permanen dan tidak dapat dipulihkan."
 			)
 		) {
-			setIsDeleting(true);
+			setIsDeletingAll(true);
 			try {
-				await clearAllData();
-				toast.error("All Data Has Been Deleted", {
-					description: "Successfully deleted all gas storage data.",
+				// Kita panggil RPC atau fungsi Supabase langsung di sini
+				const { data: allIds, error: fetchError } = await supabase
+					.from("readings")
+					.select("id");
+				if (fetchError) throw fetchError;
+
+				if (allIds && allIds.length > 0) {
+					const idsToDelete = allIds.map((item) => item.id);
+					const { error: deleteError } = await supabase
+						.from("readings")
+						.delete()
+						.in("id", idsToDelete);
+					if (deleteError) throw deleteError;
+				}
+
+				toast.error("Semua Data Telah Dihapus", {
+					description: "Berhasil menghapus semua data gas storage.",
 				});
+
+				// Manually trigger refetch setelah semua data dihapus
+				// (meskipun useDeleteReading sudah invalidate, ini untuk memastikan)
+				const queryClient = (
+					await import("@tanstack/react-query")
+				).useQueryClient();
+				queryClient.invalidateQueries({ queryKey: ["readings"] });
+
 				setSelectedItems([]);
-				await fetchAllData(); // Muat ulang data (seharusnya kosong)
 			} catch (error: any) {
-				toast.error("Deletion Failed", { description: error.message });
+				toast.error("Gagal Menghapus", { description: error.message });
 			} finally {
-				setIsDeleting(false);
+				setIsDeletingAll(false);
 			}
 		}
 	};
@@ -114,15 +108,17 @@ export function BulkOperations() {
 		});
 	};
 
+	const isProcessing = isDeletingSingle || isDeletingAll;
+
 	return (
 		<Card>
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
-					<ShieldAlert className="h-5 w-5" /> Data Deletion Operations
+					<ShieldAlert className="h-5 w-5" /> Operasi Hapus Data
 				</CardTitle>
 				<CardDescription>
-					Delete multiple data entries at once. Please be careful,
-					this action cannot be undone.
+					Hapus beberapa entri data sekaligus. Harap berhati-hati,
+					tindakan ini tidak dapat dibatalkan.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -133,7 +129,7 @@ export function BulkOperations() {
 						</div>
 					) : allReadings.length === 0 ? (
 						<div className="text-center py-8 text-gray-500">
-							No data available to delete.
+							Tidak ada data untuk dihapus.
 						</div>
 					) : (
 						<>
@@ -151,8 +147,8 @@ export function BulkOperations() {
 										aria-label="Select all items"
 									/>
 									<span className="text-sm font-medium">
-										Select All ({selectedItems.length} of{" "}
-										{allReadings.length} selected)
+										Pilih Semua ({selectedItems.length} dari{" "}
+										{allReadings.length} dipilih)
 									</span>
 								</div>
 								<div className="divide-y max-h-60 overflow-y-auto">
@@ -203,29 +199,30 @@ export function BulkOperations() {
 								<Button
 									onClick={handleDeleteSelected}
 									disabled={
-										selectedItems.length === 0 || isDeleting
+										selectedItems.length === 0 ||
+										isProcessing
 									}
 									variant="destructive">
-									{isDeleting ? (
+									{isDeletingSingle ? (
 										<Loader2 className="h-4 w-4 mr-2 animate-spin" />
 									) : (
 										<Trash2 className="h-4 w-4 mr-2" />
 									)}
-									Delete Selected ({selectedItems.length})
+									Hapus Pilihan ({selectedItems.length})
 								</Button>
 								<Button
 									variant="outline"
 									className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
 									onClick={handleClearAllData}
 									disabled={
-										allReadings.length === 0 || isDeleting
+										allReadings.length === 0 || isProcessing
 									}>
-									{isDeleting ? (
+									{isDeletingAll ? (
 										<Loader2 className="h-4 w-4 mr-2 animate-spin" />
 									) : (
 										<Trash2 className="h-4 w-4 mr-2" />
 									)}
-									Clear All Data
+									Hapus Semua Data
 								</Button>
 							</div>
 						</>

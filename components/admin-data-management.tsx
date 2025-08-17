@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
 	Card,
 	CardContent,
@@ -37,35 +37,19 @@ import {
 	Database,
 	AlertTriangle,
 } from "lucide-react";
-import { useData } from "@/contexts/data-context";
-import type { ReadingWithFlowMeter } from "@/contexts/data-context";
+import { useAllReadings } from "@/hooks/use-readings";
 import * as XLSX from "xlsx";
 
 export function AdminDataManagement() {
-	const [allReadings, setAllReadings] = useState<ReadingWithFlowMeter[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
+	const { data: allReadings = [], isLoading } = useAllReadings();
+
+	// State lokal hanya untuk filter dan UI
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedCustomer, setSelectedCustomer] = useState("all");
 	const [selectedOperator, setSelectedOperator] = useState("all");
 	const [isExporting, setIsExporting] = useState(false);
 
-	const { getAllReadings } = useData();
-
-	useEffect(() => {
-		const fetchInitialData = async () => {
-			setIsLoading(true);
-			try {
-				const data = await getAllReadings();
-				setAllReadings(data);
-			} catch (error) {
-				console.error("Failed to fetch admin data:", error);
-			} finally {
-				setIsLoading(false);
-			}
-		};
-		fetchInitialData();
-	}, [getAllReadings]);
-
+	// Logika useMemo untuk filter tidak perlu diubah, hanya sumber datanya saja
 	const { uniqueCustomers, uniqueOperators, todayReadings } = useMemo(() => {
 		const customers = Array.from(
 			new Set(allReadings.map((r) => r.customer_code))
@@ -103,6 +87,7 @@ export function AdminDataManagement() {
 		});
 	}, [allReadings, searchTerm, selectedCustomer, selectedOperator]);
 
+	// Fungsi format dan export
 	const formatDateTimeForDisplay = (timestamp: string) => {
 		const date = new Date(timestamp);
 		return {
@@ -118,7 +103,6 @@ export function AdminDataManagement() {
 		};
 	};
 
-	// --- FUNGSI HANDLE EXPORT ---
 	const handleExport = async () => {
 		if (filteredData.length === 0) {
 			alert("Tidak ada data untuk diekspor.");

@@ -4,7 +4,6 @@ import "./globals.css";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { AuthProvider } from "@/hooks/use-auth";
-import { DataProvider } from "@/contexts/data-context";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "./providers";
 
@@ -32,10 +31,8 @@ html {
 			<body>
 				<AuthProvider>
 					<Providers>
-						<DataProvider>
-							{children}
-							<Toaster />
-						</DataProvider>
+						{children}
+						<Toaster />
 					</Providers>
 				</AuthProvider>
 			</body>

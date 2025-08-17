@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useData } from "@/contexts/data-context";
-import type { ReadingWithFlowMeter } from "@/contexts/data-context";
+import { useMemo } from "react";
+import { useAllReadings } from "@/hooks/use-readings";
 import {
 	Card,
 	CardContent,
@@ -12,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
 interface AnalyticsData {
 	totalReadings: number;
@@ -23,26 +21,7 @@ interface AnalyticsData {
 }
 
 export function AdminAnalytics() {
-	const { getAllReadings } = useData();
-	const [readings, setReadings] = useState<ReadingWithFlowMeter[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-
-	useEffect(() => {
-		const fetchData = async () => {
-			setIsLoading(true);
-			try {
-				const data = await getAllReadings();
-				setReadings(data);
-			} catch (error: any) {
-				toast.error("Gagal memuat data analitik", {
-					description: error.message,
-				});
-			} finally {
-				setIsLoading(false);
-			}
-		};
-		fetchData();
-	}, [getAllReadings]);
+	const { data: readings = [], isLoading } = useAllReadings();
 
 	// Gunakan useMemo untuk menghitung data analitik hanya saat data 'readings' berubah
 	const analyticsData = useMemo<AnalyticsData>(() => {
@@ -56,7 +35,6 @@ export function AdminAnalytics() {
 			};
 		}
 
-		// Hitung rata-rata
 		const totalPSI = readings.reduce((sum, r) => sum + Number(r.psi), 0);
 		const totalTemp = readings.reduce((sum, r) => sum + Number(r.temp), 0);
 		const totalFlow = readings.reduce(
@@ -64,7 +42,6 @@ export function AdminAnalytics() {
 			0
 		);
 
-		// Hitung top customers
 		const customerCounts = readings.reduce((acc, r) => {
 			acc[r.customer_code] = (acc[r.customer_code] || 0) + 1;
 			return acc;
