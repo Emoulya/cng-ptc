@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
 	Table,
 	TableBody,
@@ -9,37 +8,20 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { useData } from "@/contexts/data-context";
-import type { ReadingWithFlowMeter } from "@/contexts/data-context";
+import { useReadingsByCustomer } from "@/hooks/use-readings";
 import { Loader2 } from "lucide-react";
+import type { ReadingWithFlowMeter } from "@/types/data";
 
 interface DataTableProps {
 	customerCode: string;
 }
 
 export function DataTable({ customerCode }: DataTableProps) {
-	const { getReadingsByCustomer } = useData();
-	const [readings, setReadings] = useState<ReadingWithFlowMeter[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-
-	useEffect(() => {
-		const fetchData = async () => {
-			setIsLoading(true);
-			try {
-				const data = await getReadingsByCustomer(customerCode);
-				setReadings(data);
-			} catch (error) {
-				console.error("Failed to fetch data:", error);
-				// Anda bisa menambahkan notifikasi toast di sini jika mau
-			} finally {
-				setIsLoading(false);
-			}
-		};
-
-		if (customerCode) {
-			fetchData();
-		}
-	}, [customerCode, getReadingsByCustomer]);
+	const {
+		data: readings = [],
+		isLoading,
+		isError,
+	} = useReadingsByCustomer(customerCode);
 
 	const formatDateTime = (timestamp: string) => {
 		const date = new Date(timestamp);
@@ -59,14 +41,14 @@ export function DataTable({ customerCode }: DataTableProps) {
 	return (
 		<div className="space-y-4">
 			<p className="text-sm text-gray-600">
-				Showing {readings.length} recent entries for {customerCode}
+				Menampilkan {readings.length} entri terbaru untuk {customerCode}
 			</p>
 			<div className="relative h-[400px] w-full overflow-auto rounded-md border">
 				<Table>
 					<TableHeader className="sticky top-0 bg-gray-50 z-10">
 						<TableRow>
-							<TableHead>Date</TableHead>
-							<TableHead>Time</TableHead>
+							<TableHead>Tanggal</TableHead>
+							<TableHead>Waktu</TableHead>
 							<TableHead>Jumlah Fix Storage</TableHead>
 							<TableHead>Storage</TableHead>
 							<TableHead>PSI</TableHead>
@@ -75,7 +57,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 							<TableHead>Flow/Turbin</TableHead>
 							<TableHead>Flow Meter</TableHead>
 							<TableHead className="min-w-[120px]">
-								Remarks
+								Keterangan
 							</TableHead>
 						</TableRow>
 					</TableHeader>
@@ -87,8 +69,16 @@ export function DataTable({ customerCode }: DataTableProps) {
 									className="text-center py-8">
 									<Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-500" />
 									<p className="mt-2 text-sm text-gray-500">
-										Loading data...
+										Memuat data...
 									</p>
+								</TableCell>
+							</TableRow>
+						) : isError ? (
+							<TableRow>
+								<TableCell
+									colSpan={10}
+									className="text-center text-red-500 py-8">
+									Gagal memuat data.
 								</TableCell>
 							</TableRow>
 						) : readings.length === 0 ? (
@@ -96,11 +86,11 @@ export function DataTable({ customerCode }: DataTableProps) {
 								<TableCell
 									colSpan={10}
 									className="text-center text-gray-500 py-8">
-									No data entries found for {customerCode}
+									Tidak ada entri data untuk {customerCode}
 								</TableCell>
 							</TableRow>
 						) : (
-							readings.map((row) => {
+							readings.map((row: ReadingWithFlowMeter) => {
 								const { date, time } = formatDateTime(
 									row.created_at
 								);

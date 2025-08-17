@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,13 +14,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { useData } from "@/contexts/data-context";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/lib/supabase-client";
-
-interface Storage {
-	storage_number: string;
-}
+import { useAddReading } from "@/hooks/use-readings";
+import { useStorages } from "@/hooks/use-storages";
 
 interface DataEntryFormProps {
 	customerCode: string;
@@ -34,12 +30,11 @@ const hourOptions = Array.from({ length: 24 }, (_, i) => {
 });
 
 export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
-	const { addReading } = useData();
+	const { mutate: addReading, isPending: isSubmitting } = useAddReading();
+	const { data: storages = [], isLoading: isLoadingStorages } = useStorages();
 	const { user } = useAuth();
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [storages, setStorages] = useState<Storage[]>([]);
-	const [isLoadingStorages, setIsLoadingStorages] = useState(true);
 
+	// State hanya untuk form
 	const [formData, setFormData] = useState({
 		recordingHour: "",
 		fixedStorageQuantity: "",
@@ -50,25 +45,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		flowTurbine: "",
 		remarks: "",
 	});
-
-	useEffect(() => {
-		const fetchStorages = async () => {
-			setIsLoadingStorages(true);
-			const { data, error } = await supabase
-				.from("storages")
-				.select("storage_number")
-				.order("storage_number", { ascending: true });
-
-			if (error) {
-				console.error("Error fetching storages:", error);
-				toast.error("Gagal memuat daftar storage");
-			} else {
-				setStorages(data);
-			}
-			setIsLoadingStorages(false);
-		};
-		fetchStorages();
-	}, []);
 
 	const currentDate = new Date().toLocaleDateString("id-ID", {
 		timeZone: "Asia/Jakarta",
@@ -82,7 +58,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!user) {
 			toast.error("Authentication Error", {
@@ -90,7 +66,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 			});
 			return;
 		}
-		// Validasi, tambahkan recordingHour
+		// Validasi
 		if (
 			!formData.recordingHour ||
 			!formData.fixedStorageQuantity ||
@@ -106,16 +82,13 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 			return;
 		}
 
-		setIsSubmitting(true);
-		try {
-			const today = new Date();
-			const [hour, minute] = formData.recordingHour
-				.split(":")
-				.map(Number);
-			today.setHours(hour, minute, 0, 0);
-			const finalTimestamp = today.toISOString();
+		const today = new Date();
+		const [hour] = formData.recordingHour.split(":").map(Number);
+		today.setHours(hour, 0, 0, 0); // Set jam, menit dan detik ke 0
+		const finalTimestamp = today.toISOString();
 
-			await addReading({
+		addReading(
+			{
 				created_at: finalTimestamp,
 				customer_code: customerCode,
 				operator_id: user.id,
@@ -128,31 +101,23 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				psi_out: Number.parseFloat(formData.psiOut),
 				flow_turbine: Number.parseFloat(formData.flowTurbine),
 				remarks: formData.remarks,
-			});
-			toast.success("Data Tersimpan", {
-				description: `Data untuk jam ${formData.recordingHour} berhasil dicatat.`,
-			});
-
-			setFormData({
-				// Reset form
-				recordingHour: "",
-				fixedStorageQuantity: "",
-				storage: "",
-				psi: "",
-				temp: "",
-				psiOut: "",
-				flowTurbine: "",
-				remarks: "",
-			});
-
-			onSuccess?.();
-		} catch (error: any) {
-			toast.error("Gagal Menyimpan Data", {
-				description: error.message || "Terjadi kesalahan. Coba lagi.",
-			});
-		} finally {
-			setIsSubmitting(false);
-		}
+			},
+			{
+				onSuccess: () => {
+					setFormData({
+						recordingHour: "",
+						fixedStorageQuantity: "",
+						storage: "",
+						psi: "",
+						temp: "",
+						psiOut: "",
+						flowTurbine: "",
+						remarks: "",
+					});
+					onSuccess?.();
+				},
+			}
+		);
 	};
 
 	return (
@@ -207,7 +172,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 					</SelectContent>
 				</Select>
 			</div>
-
+			
 			<div className="space-y-2">
 				<Label
 					htmlFor="fixedStorageQuantity"
@@ -348,7 +313,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 					className="text-base min-h-[80px]"
 				/>
 			</div>
-
 			<Button
 				type="submit"
 				className="w-full h-12 text-base"

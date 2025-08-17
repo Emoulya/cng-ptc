@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase-client";
+import { useState } from "react";
 import {
 	Card,
 	CardContent,
@@ -22,81 +21,41 @@ import {
 } from "@/components/ui/table";
 import { PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-interface Customer {
-	id: number;
-	code: string;
-	name: string | null;
-}
+import {
+	useCustomers,
+	useAddCustomer,
+	useDeleteCustomer,
+} from "@/hooks/use-customers";
 
 export function CustomerManagement() {
-	const [customers, setCustomers] = useState<Customer[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isSubmitting, setIsSubmitting] = useState(false);
+	const { data: customers = [], isLoading } = useCustomers();
+	const { mutate: addCustomer, isPending: isSubmitting } = useAddCustomer();
+	const { mutate: deleteCustomer } = useDeleteCustomer();
+
 	const [newCustomerCode, setNewCustomerCode] = useState("");
 	const [newCustomerName, setNewCustomerName] = useState("");
 
-	const fetchCustomers = async () => {
-		setIsLoading(true);
-		const { data, error } = await supabase
-			.from("customers")
-			.select("*")
-			.order("code");
-		if (error) {
-			toast.error("Gagal memuat daftar pelanggan", {
-				description: error.message,
-			});
-		} else {
-			setCustomers(data);
-		}
-		setIsLoading(false);
-	};
-
-	useEffect(() => {
-		fetchCustomers();
-	}, []);
-
-	const handleAddCustomer = async (e: React.FormEvent) => {
+	const handleAddCustomer = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!newCustomerCode) {
 			toast.warning("Kode Pelanggan harus diisi");
 			return;
 		}
-		setIsSubmitting(true);
-		const { error } = await supabase.from("customers").insert({
-			code: newCustomerCode.toUpperCase(),
-			name: newCustomerName || null,
-		});
-
-		if (error) {
-			toast.error("Gagal menambah pelanggan", {
-				description: error.message,
-			});
-		} else {
-			toast.success(
-				`Pelanggan ${newCustomerCode.toUpperCase()} berhasil ditambahkan`
-			);
-			setNewCustomerCode("");
-			setNewCustomerName("");
-			await fetchCustomers(); // Muat ulang data
-		}
-		setIsSubmitting(false);
+		addCustomer(
+			{ code: newCustomerCode, name: newCustomerName || null },
+			{
+				onSuccess: () => {
+					// Reset form setelah berhasil
+					setNewCustomerCode("");
+					setNewCustomerName("");
+				},
+			}
+		);
 	};
 
-	const handleDeleteCustomer = async (id: number, code: string) => {
+	const handleDeleteCustomer = (id: number, code: string) => {
 		if (confirm(`Apakah Anda yakin ingin menghapus pelanggan ${code}?`)) {
-			const { error } = await supabase
-				.from("customers")
-				.delete()
-				.match({ id });
-			if (error) {
-				toast.error("Gagal menghapus pelanggan", {
-					description: error.message,
-				});
-			} else {
-				toast.success(`Pelanggan ${code} berhasil dihapus`);
-				await fetchCustomers(); // Muat ulang data
-			}
+			deleteCustomer(id);
 		}
 	};
 
