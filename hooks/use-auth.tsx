@@ -6,6 +6,7 @@ import {
 	useState,
 	useEffect,
 	type ReactNode,
+	useCallback,
 } from "react";
 import { supabase } from "@/lib/supabase-client";
 import type {
@@ -34,23 +35,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<UserProfile | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 
+	const getProfile = useCallback(async (supabaseUser: SupabaseUser) => {
+		const { data, error } = await supabase
+			.from("profiles")
+			.select("id, username, role")
+			.eq("id", supabaseUser.id)
+			.single();
+
+		if (error) {
+			console.error("Error fetching profile:", error);
+			setUser(null); // Set user jadi null jika profil gagal diambil
+			return null;
+		}
+		return data as UserProfile;
+	}, []);
+
 	useEffect(() => {
-		setIsLoading(true);
-		// Fungsi untuk mengambil profil pengguna dari tabel 'profiles'
-		const getProfile = async (supabaseUser: SupabaseUser) => {
-			const { data, error } = await supabase
-				.from("profiles")
-				.select("id, username, role")
-				.eq("id", supabaseUser.id)
-				.single();
-
-			if (error) {
-				console.error("Error fetching profile:", error);
-				return null;
-			}
-			return data as UserProfile;
-		};
-
 		// Cek sesi yang aktif saat pertama kali load
 		supabase.auth.getSession().then(async ({ data: { session } }) => {
 			if (session) {
@@ -60,7 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			setIsLoading(false);
 		});
 
-		// Dengarkan perubahan status otentikasi (SIGNED_IN, SIGNED_OUT)
 		const { data: authListener } = supabase.auth.onAuthStateChange(
 			async (event: AuthChangeEvent, session: Session | null) => {
 				if (session) {
@@ -76,21 +75,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		return () => {
 			authListener.subscription.unsubscribe();
 		};
-	}, []);
+	}, [getProfile]); // Tambahkan getProfile sebagai dependensi
 
 	const login = async (email: string, password: string) => {
-		const { error } = await supabase.auth.signInWithPassword({
+		const { data, error } = await supabase.auth.signInWithPassword({
 			email,
 			password,
 		});
+
 		if (error) throw error;
-		// State akan diupdate otomatis oleh onAuthStateChange
+
+		// Jika login supabase berhasil, langsung ambil profil dan set user
+		if (data.user) {
+			const profile = await getProfile(data.user);
+			setUser(profile);
+		}
 	};
 
 	const logout = async () => {
 		await supabase.auth.signOut();
 		setUser(null);
-		// State akan diupdate otomatis oleh onAuthStateChange
 	};
 
 	const value = {
