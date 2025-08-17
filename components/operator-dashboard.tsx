@@ -8,16 +8,18 @@ import { CustomerSelector } from "@/components/customer-selector"
 import { DataTable } from "@/components/data-table"
 import { DataEntryForm } from "@/components/data-entry-form"
 import { LogOut, Plus, BarChart3 } from "lucide-react"
+import { useRouter } from "next/navigation";
 
 export function OperatorDashboard() {
   const { user, logout } = useAuth()
+  const router = useRouter();
   const [selectedCustomer, setSelectedCustomer] = useState<string>("")
   const [showDataEntry, setShowDataEntry] = useState(false)
   const [showDataTable, setShowDataTable] = useState(false)
 
-  const handleLogout = () => {
-    logout()
-    window.location.href = "/"
+  const handleLogout = async () => {
+    await logout();
+    router.push("/");
   }
 
   const handleDataEntrySuccess = () => {

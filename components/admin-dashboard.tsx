@@ -11,13 +11,15 @@ import {
 	BarChart3,
 	Settings,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export function AdminDashboard() {
 	const { user, logout } = useAuth();
+	const router = useRouter();
 
-	const handleLogout = () => {
-		logout();
-		window.location.href = "/";
+	const handleLogout = async () => {
+		await logout();
+		router.push("/");
 	};
 
 	return (
