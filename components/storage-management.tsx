@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase-client";
+import { useState } from "react";
 import {
 	Card,
 	CardContent,
@@ -22,79 +21,39 @@ import {
 } from "@/components/ui/table";
 import { PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-interface Storage {
-	id: number;
-	storage_number: string;
-}
+import {
+	useStorages,
+	useAddStorage,
+	useDeleteStorage,
+} from "@/hooks/use-storages";
 
 export function StorageManagement() {
-	const [storages, setStorages] = useState<Storage[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isSubmitting, setIsSubmitting] = useState(false);
+	const { data: storages = [], isLoading } = useStorages();
+	const { mutate: addStorage, isPending: isSubmitting } = useAddStorage();
+	const { mutate: deleteStorage } = useDeleteStorage();
+
 	const [newStorageNumber, setNewStorageNumber] = useState("");
 
-	const fetchStorages = async () => {
-		setIsLoading(true);
-		const { data, error } = await supabase
-			.from("storages")
-			.select("*")
-			.order("storage_number");
-		if (error) {
-			toast.error("Gagal memuat daftar storage", {
-				description: error.message,
-			});
-		} else {
-			setStorages(data);
-		}
-		setIsLoading(false);
-	};
-
-	useEffect(() => {
-		fetchStorages();
-	}, []);
-
-	const handleAddStorage = async (e: React.FormEvent) => {
+	const handleAddStorage = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!newStorageNumber) {
 			toast.warning("Nomor Storage harus diisi");
 			return;
 		}
-		setIsSubmitting(true);
-		const { error } = await supabase
-			.from("storages")
-			.insert({ storage_number: newStorageNumber });
-
-		if (error) {
-			toast.error("Gagal menambah storage", {
-				description: error.message,
-			});
-		} else {
-			toast.success(`Storage ${newStorageNumber} berhasil ditambahkan`);
-			setNewStorageNumber("");
-			await fetchStorages();
-		}
-		setIsSubmitting(false);
+		addStorage(newStorageNumber, {
+			onSuccess: () => {
+				setNewStorageNumber(""); // Reset form setelah berhasil
+			},
+		});
 	};
 
-	const handleDeleteStorage = async (id: number, storageNumber: string) => {
+	const handleDeleteStorage = (id: number, storageNumber: string) => {
 		if (
 			confirm(
 				`Apakah Anda yakin ingin menghapus storage ${storageNumber}?`
 			)
 		) {
-			const { error } = await supabase
-				.from("storages")
-				.delete()
-				.match({ id });
-			if (error) {
-				toast.error("Gagal menghapus storage", {
-					description: error.message,
-				});
-			} else {
-				toast.success(`Storage ${storageNumber} berhasil dihapus`);
-				await fetchStorages();
-			}
+			deleteStorage(id);
 		}
 	};
 

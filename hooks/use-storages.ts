@@ -21,9 +21,22 @@ export const useAddStorage = () => {
 			toast.success(`Storage ${variables} berhasil ditambahkan`);
 			queryClient.invalidateQueries({ queryKey: ["storages"] });
 		},
-		onError: (error: Error) => {
+		onError: (error: any) => {
+			let description = "Terjadi kesalahan yang tidak diketahui.";
+			// Cek apakah pesan error mengandung teks untuk duplikat data
+			if (
+				error.message &&
+				error.message.includes(
+					"duplicate key value violates unique constraint"
+				)
+			) {
+				description =
+					"Nomor storage sudah ada. Harap gunakan nomor lain.";
+			} else if (error.message) {
+				description = error.message;
+			}
 			toast.error("Gagal menambah storage", {
-				description: error.message,
+				description: description,
 			});
 		},
 	});

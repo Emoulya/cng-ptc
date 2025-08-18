@@ -24,9 +24,22 @@ export const useAddCustomer = () => {
 			);
 			queryClient.invalidateQueries({ queryKey: ["customers"] });
 		},
-		onError: (error: Error) => {
+		onError: (error: any) => {
+			let description = "Terjadi kesalahan yang tidak diketahui.";
+			// Cek apakah pesan error mengandung teks untuk duplikat data
+			if (
+				error.message &&
+				error.message.includes(
+					"duplicate key value violates unique constraint"
+				)
+			) {
+				description =
+					"Kode pelanggan sudah ada. Harap gunakan kode lain.";
+			} else if (error.message) {
+				description = error.message;
+			}
 			toast.error("Gagal menambah pelanggan", {
-				description: error.message,
+				description: description,
 			});
 		},
 	});
