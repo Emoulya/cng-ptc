@@ -9,11 +9,7 @@ import {
 	useCallback,
 } from "react";
 import { supabase } from "@/lib/supabase-client";
-import type {
-	AuthChangeEvent,
-	Session,
-	User as SupabaseUser,
-} from "@supabase/supabase-js";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 // Definisikan tipe User baru yang menyertakan role
 export interface UserProfile {
@@ -33,49 +29,69 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<UserProfile | null>(null);
+	// Inisialisasi isLoading ke true untuk menampilkan loader pada saat awal
 	const [isLoading, setIsLoading] = useState(true);
 
-	const getProfile = useCallback(async (supabaseUser: SupabaseUser) => {
-		const { data, error } = await supabase
-			.from("profiles")
-			.select("id, username, role")
-			.eq("id", supabaseUser.id)
-			.single();
+	const getProfile = useCallback(
+		async (supabaseUser: SupabaseUser | null) => {
+			if (!supabaseUser) {
+				return null;
+			}
 
-		if (error) {
-			console.error("Error fetching profile:", error);
-			setUser(null); // Set user jadi null jika profil gagal diambil
-			return null;
-		}
-		return data as UserProfile;
-	}, []);
+			const { data, error } = await supabase
+				.from("profiles")
+				.select("id, username, role")
+				.eq("id", supabaseUser.id)
+				.single();
+
+			if (error) {
+				console.error("Error fetching profile:", error);
+				return null;
+			}
+			return data as UserProfile;
+		},
+		[]
+	);
 
 	useEffect(() => {
-		// Cek sesi yang aktif saat pertama kali load
-		supabase.auth.getSession().then(async ({ data: { session } }) => {
-			if (session) {
-				const profile = await getProfile(session.user);
-				setUser(profile);
-			}
-			setIsLoading(false);
-		});
+		// Fungsi ini sekarang memiliki penanganan error yang kuat
+		const checkSessionAndSetUser = async () => {
+			try {
+				const {
+					data: { session },
+				} = await supabase.auth.getSession();
 
-		const { data: authListener } = supabase.auth.onAuthStateChange(
-			async (event: AuthChangeEvent, session: Session | null) => {
 				if (session) {
 					const profile = await getProfile(session.user);
 					setUser(profile);
 				} else {
 					setUser(null);
 				}
+			} catch (error) {
+				console.error("Error during session check:", error);
+				setUser(null); // Jika error, pastikan user dianggap logout
+			} finally {
 				setIsLoading(false);
+			}
+		};
+
+		// Jalankan pengecekan saat provider pertama kali dimuat
+		checkSessionAndSetUser();
+
+		// Siapkan listener untuk perubahan status auth berikutnya (login/logout)
+		const { data: authListener } = supabase.auth.onAuthStateChange(
+			(_event, session) => {
+				// Ketika status auth berubah, cukup update profil user
+				getProfile(session?.user ?? null).then((profile) => {
+					setUser(profile);
+				});
 			}
 		);
 
 		return () => {
 			authListener.subscription.unsubscribe();
 		};
-	}, [getProfile]); // Tambahkan getProfile sebagai dependensi
+	}, [getProfile]);
 
 	const login = async (email: string, password: string) => {
 		const { data, error } = await supabase.auth.signInWithPassword({
@@ -85,7 +101,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 		if (error) throw error;
 
-		// Jika login supabase berhasil, langsung ambil profil dan set user
 		if (data.user) {
 			const profile = await getProfile(data.user);
 			setUser(profile);
