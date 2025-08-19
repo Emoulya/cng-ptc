@@ -35,11 +35,6 @@ interface DataEntryFormProps {
 	onSuccess?: () => void;
 }
 
-// Membuat daftar opsi jam dari "00:00" sampai "23:00"
-const hourOptions = Array.from({ length: 24 }, (_, i) => {
-	const hour = i.toString().padStart(2, "0");
-	return `${hour}:00`;
-});
 
 export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 	const { mutate: addReading, isPending: isSubmitting } = useAddReading();
@@ -51,7 +46,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		null
 	);
 	const [formData, setFormData] = useState({
-		recordingHour: "",
+		recordingTime: "",
 		storageNumber: "",
 		fixedStorageQuantity: "",
 		psi: "",
@@ -61,10 +56,9 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		remarks: "",
 	});
 
-	// Efek untuk mereset form jika customer berubah
 	useEffect(() => {
 		setFormData({
-			recordingHour: "",
+			recordingTime: "",
 			storageNumber: "",
 			fixedStorageQuantity: "",
 			psi: "",
@@ -109,7 +103,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		}
 
 		if (
-			!formData.recordingHour ||
+			!formData.recordingTime ||
 			!formData.storageNumber ||
 			!formData.fixedStorageQuantity ||
 			!formData.psi ||
@@ -123,8 +117,18 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 			return;
 		}
 
+		// --- LOGIKA PEMBULATAN WAKTU ---
 		const today = new Date();
-		const [hour] = formData.recordingHour.split(":").map(Number);
+		const [hourStr, minuteStr] = formData.recordingTime.split(":");
+		let hour = parseInt(hourStr, 10);
+		const minute = parseInt(minuteStr, 10);
+
+		// Terapkan aturan pembulatan
+		if (minute >= 30) {
+			hour += 1;
+		}
+
+		// Atur waktu final (menit dan detik selalu 0)
 		today.setHours(hour, 0, 0, 0);
 		const finalTimestamp = today.toISOString();
 
@@ -146,7 +150,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 			{
 				onSuccess: () => {
 					setFormData({
-						recordingHour: "",
+						recordingTime: "",
 						storageNumber: "",
 						fixedStorageQuantity: "",
 						psi: "",
@@ -239,32 +243,28 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 					</div>
 				)}
 
-				{/* Recording Hour */}
+				{/* --- INPUT WAKTU --- */}
 				<div className="space-y-3">
 					<Label
-						htmlFor="recordingHour"
+						htmlFor="recordingTime"
 						className="text-base font-semibold text-gray-700 flex items-center gap-2">
 						<Clock className="h-4 w-4 text-purple-600" />
-						Jam Pencatatan <span className="text-red-500">*</span>
+						Jam Pencatatan Aktual{" "}
+						<span className="text-red-500">*</span>
 					</Label>
-					<Select
-						value={formData.recordingHour}
-						onValueChange={(value) =>
-							handleInputChange("recordingHour", value)
-						}>
-						<SelectTrigger className="h-12">
-							<SelectValue placeholder="Pilih jam pencatatan..." />
-						</SelectTrigger>
-						<SelectContent>
-							{hourOptions.map((hour) => (
-								<SelectItem
-									key={hour}
-									value={hour}>
-									{hour}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
+					<Input
+						id="recordingTime"
+						type="time"
+						value={formData.recordingTime}
+						onChange={(e) =>
+							handleInputChange("recordingTime", e.target.value)
+						}
+						className="h-12 text-base"
+						required
+					/>
+					<p className="text-xs text-gray-500">
+						Waktu akan dibulatkan otomatis oleh sistem.
+					</p>
 				</div>
 
 				{/* Measurement Fields Grid */}
