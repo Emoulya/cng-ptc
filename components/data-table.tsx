@@ -40,7 +40,6 @@ export function DataTable({ customerCode }: DataTableProps) {
 
 	return (
 		<div className="space-y-4">
-			{/* Enhanced Header */}
 			<div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
 				<div className="flex items-center gap-2">
 					<Database className="h-5 w-5 text-blue-600" />
@@ -53,11 +52,16 @@ export function DataTable({ customerCode }: DataTableProps) {
 				</div>
 			</div>
 
-			{/* Enhanced Table Container */}
 			<div className="relative h-[400px] w-full overflow-auto rounded-xl border-2 border-gray-200 bg-white/80 backdrop-blur-sm shadow-lg">
 				<Table>
 					<TableHeader className="sticky top-0 bg-gradient-to-r from-gray-50 to-blue-50 z-10 border-b-2 border-gray-200">
 						<TableRow>
+							<TableHead className="font-semibold text-gray-700 border-r border-gray-200">
+								Jumlah Storage
+							</TableHead>
+							<TableHead className="font-semibold text-gray-700 border-r border-gray-200">
+								Storage
+							</TableHead>
 							<TableHead className="font-semibold text-gray-700 border-r border-gray-200">
 								<div className="flex items-center gap-1">
 									<Calendar className="h-4 w-4" />
@@ -69,12 +73,6 @@ export function DataTable({ customerCode }: DataTableProps) {
 									<Clock className="h-4 w-4" />
 									Waktu
 								</div>
-							</TableHead>
-							<TableHead className="font-semibold text-gray-700 border-r border-gray-200">
-								Fix Storage
-							</TableHead>
-							<TableHead className="font-semibold text-gray-700 border-r border-gray-200">
-								Storage
 							</TableHead>
 							<TableHead className="font-semibold text-gray-700 border-r border-gray-200">
 								PSI
@@ -102,12 +100,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 								<TableCell
 									colSpan={10}
 									className="text-center py-12">
-									<div className="flex flex-col items-center gap-3">
-										<Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-										<p className="text-base text-gray-600 font-medium">
-											Memuat data...
-										</p>
-									</div>
+									<Loader2 className="h-8 w-8 animate-spin mx-auto" />
 								</TableCell>
 							</TableRow>
 						) : isError ? (
@@ -115,12 +108,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 								<TableCell
 									colSpan={10}
 									className="text-center text-red-600 py-12">
-									<div className="flex flex-col items-center gap-2">
-										<Database className="h-8 w-8 text-red-400" />
-										<p className="text-base font-medium">
-											Gagal memuat data.
-										</p>
-									</div>
+									Gagal memuat data.
 								</TableCell>
 							</TableRow>
 						) : readings.length === 0 ? (
@@ -151,17 +139,17 @@ export function DataTable({ customerCode }: DataTableProps) {
 													? "bg-white/50"
 													: "bg-gray-50/30"
 											}`}>
-											<TableCell className="font-mono text-sm font-medium border-r border-gray-100 bg-blue-50/30">
-												{date}
-											</TableCell>
-											<TableCell className="font-mono text-sm font-medium border-r border-gray-100 bg-purple-50/30">
-												{time}
-											</TableCell>
 											<TableCell className="border-r border-gray-100 font-semibold text-green-700">
 												{row.fixed_storage_quantity}
 											</TableCell>
 											<TableCell className="border-r border-gray-100 font-mono font-medium">
 												{row.storage_number}
+											</TableCell>
+											<TableCell className="font-mono text-sm font-medium border-r border-gray-100 bg-blue-50/30">
+												{date}
+											</TableCell>
+											<TableCell className="font-mono text-sm font-medium border-r border-gray-100 bg-purple-50/30">
+												{time}
 											</TableCell>
 											<TableCell className="border-r border-gray-100 font-mono font-semibold text-red-600">
 												{String(row.psi)}

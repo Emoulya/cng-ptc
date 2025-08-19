@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useAddReading } from "@/hooks/use-readings";
-import { useStorages } from "@/hooks/use-storages";
+import { useStoragesForOperator } from "@/hooks/use-storages";
+import type { Storage } from "@/types/data";
 import {
 	Clock,
 	Thermometer,
@@ -24,6 +25,9 @@ import {
 	FileText,
 	Database,
 	Save,
+	Truck,
+	Building,
+	Boxes,
 } from "lucide-react";
 
 interface DataEntryFormProps {
@@ -39,14 +43,17 @@ const hourOptions = Array.from({ length: 24 }, (_, i) => {
 
 export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 	const { mutate: addReading, isPending: isSubmitting } = useAddReading();
-	const { data: storages = [], isLoading: isLoadingStorages } = useStorages();
+	const { data: storages = [], isLoading: isLoadingStorages } =
+		useStoragesForOperator(customerCode);
 	const { user } = useAuth();
 
-	// State hanya untuk form
+	const [selectedStorage, setSelectedStorage] = useState<Storage | null>(
+		null
+	);
 	const [formData, setFormData] = useState({
 		recordingHour: "",
+		storageNumber: "",
 		fixedStorageQuantity: "",
-		storage: "",
 		psi: "",
 		temp: "",
 		psiOut: "",
@@ -54,23 +61,57 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		remarks: "",
 	});
 
+	// Efek untuk mereset form jika customer berubah
+	useEffect(() => {
+		setFormData({
+			recordingHour: "",
+			storageNumber: "",
+			fixedStorageQuantity: "",
+			psi: "",
+			temp: "",
+			psiOut: "",
+			flowTurbine: "",
+			remarks: "",
+		});
+		setSelectedStorage(null);
+	}, [customerCode]);
+
+	// Efek untuk auto-fill jumlah storage jika tipenya 'fixed'
+	useEffect(() => {
+		if (selectedStorage?.type === "fixed") {
+			setFormData((prev) => ({
+				...prev,
+				fixedStorageQuantity:
+					selectedStorage.default_quantity?.toString() || "",
+			}));
+		} else {
+			// Kosongkan lagi jika user beralih dari fixed ke mobile
+			setFormData((prev) => ({ ...prev, fixedStorageQuantity: "" }));
+		}
+	}, [selectedStorage]);
+
 	const handleInputChange = (field: string, value: string) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
+	};
+
+	const handleStorageChange = (storageNumber: string) => {
+		const storageObj =
+			storages.find((s) => s.storage_number === storageNumber) || null;
+		setSelectedStorage(storageObj);
+		handleInputChange("storageNumber", storageNumber);
 	};
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!user) {
-			toast.error("Authentication Error", {
-				description: "User not found. Please log in again.",
-			});
+			toast.error("Authentication Error");
 			return;
 		}
 
 		if (
 			!formData.recordingHour ||
+			!formData.storageNumber ||
 			!formData.fixedStorageQuantity ||
-			!formData.storage ||
 			!formData.psi ||
 			!formData.temp ||
 			!formData.psiOut ||
@@ -92,10 +133,10 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				created_at: finalTimestamp,
 				customer_code: customerCode,
 				operator_id: user.id,
+				storage_number: formData.storageNumber,
 				fixed_storage_quantity: Number.parseInt(
 					formData.fixedStorageQuantity
 				),
-				storage_number: formData.storage,
 				psi: Number.parseFloat(formData.psi),
 				temp: Number.parseFloat(formData.temp),
 				psi_out: Number.parseFloat(formData.psiOut),
@@ -106,14 +147,15 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				onSuccess: () => {
 					setFormData({
 						recordingHour: "",
+						storageNumber: "",
 						fixedStorageQuantity: "",
-						storage: "",
 						psi: "",
 						temp: "",
 						psiOut: "",
 						flowTurbine: "",
 						remarks: "",
 					});
+					setSelectedStorage(null);
 					onSuccess?.();
 				},
 			}
@@ -124,7 +166,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		<form
 			onSubmit={handleSubmit}
 			className="space-y-6">
-			{/* Form Fields Grid */}
 			<div className="grid gap-6">
 				{/* Storage Selection */}
 				<div className="space-y-3">
@@ -135,29 +176,31 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 						Storage <span className="text-red-500">*</span>
 					</Label>
 					<Select
-						value={formData.storage}
-						onValueChange={(value) =>
-							handleInputChange("storage", value)
-						}
+						value={formData.storageNumber}
+						onValueChange={handleStorageChange}
 						disabled={isLoadingStorages}>
-						<SelectTrigger className="h-12 border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-blue-300 focus:border-blue-500 transition-all duration-200">
-							<SelectValue
-								placeholder={
-									isLoadingStorages
-										? "Memuat..."
-										: "Pilih nomor storage..."
-								}
-							/>
+						<SelectTrigger className="h-12">
+							<SelectValue placeholder="Pilih nomor storage..." />
 						</SelectTrigger>
-						<SelectContent className="bg-white/95 backdrop-blur-md border-gray-200 shadow-xl max-h-60">
+						<SelectContent>
 							{storages.map((storage) => (
 								<SelectItem
 									key={storage.storage_number}
-									value={storage.storage_number}
-									className="hover:bg-blue-50 focus:bg-blue-50 transition-colors duration-150">
-									<div className="flex items-center gap-2">
-										<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-										{storage.storage_number}
+									value={storage.storage_number}>
+									<div className="flex items-center justify-between w-full">
+										<div className="flex items-center gap-2">
+											{storage.type === "fixed" ? (
+												<Building className="h-4 w-4 text-indigo-600" />
+											) : (
+												<Truck className="h-4 w-4 text-green-600" />
+											)}
+											<span>
+												{storage.storage_number}
+											</span>
+										</div>
+										<span className="text-xs text-gray-500 capitalize">
+											{storage.type}
+										</span>
 									</div>
 								</SelectItem>
 							))}
@@ -165,38 +208,36 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 					</Select>
 				</div>
 
-				{/* Fixed Storage Quantity */}
-				<div className="space-y-3">
-					<Label
-						htmlFor="fixedStorageQuantity"
-						className="text-base font-semibold text-gray-700 flex items-center gap-2">
-						<Database className="h-4 w-4 text-green-600" />
-						Jumlah Fix Storage{" "}
-						<span className="text-red-500">*</span>
-					</Label>
-					<Select
-						value={formData.fixedStorageQuantity}
-						onValueChange={(value) =>
-							handleInputChange("fixedStorageQuantity", value)
-						}>
-						<SelectTrigger className="h-12 border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-green-300 focus:border-green-500 transition-all duration-200">
-							<SelectValue placeholder="Pilih jumlah..." />
-						</SelectTrigger>
-						<SelectContent className="bg-white/95 backdrop-blur-md border-gray-200 shadow-xl">
-							{[1, 2, 3, 4, 5].map((num) => (
-								<SelectItem
-									key={num}
-									value={num.toString()}
-									className="hover:bg-green-50 focus:bg-green-50 transition-colors duration-150">
-									<div className="flex items-center gap-2">
-										<div className="w-2 h-2 bg-green-500 rounded-full"></div>
+				{/* Conditional Fixed Storage Quantity */}
+				{selectedStorage && selectedStorage.type === "mobile" && (
+					<div className="space-y-3">
+						<Label
+							htmlFor="fixedStorageQuantity"
+							className="text-base font-semibold text-gray-700 flex items-center gap-2">
+							<Boxes className="h-4 w-4 text-green-600" />
+							Jumlah Storage (Mobile){" "}
+							<span className="text-red-500">*</span>
+						</Label>
+						<Select
+							value={formData.fixedStorageQuantity}
+							onValueChange={(value) =>
+								handleInputChange("fixedStorageQuantity", value)
+							}>
+							<SelectTrigger className="h-12">
+								<SelectValue placeholder="Pilih jumlah..." />
+							</SelectTrigger>
+							<SelectContent>
+								{[1, 2, 3, 4, 5].map((num) => (
+									<SelectItem
+										key={num}
+										value={num.toString()}>
 										{num}
-									</div>
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+				)}
 
 				{/* Recording Hour */}
 				<div className="space-y-3">
@@ -211,15 +252,14 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 						onValueChange={(value) =>
 							handleInputChange("recordingHour", value)
 						}>
-						<SelectTrigger className="h-12 border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-purple-300 focus:border-purple-500 transition-all duration-200">
+						<SelectTrigger className="h-12">
 							<SelectValue placeholder="Pilih jam pencatatan..." />
 						</SelectTrigger>
-						<SelectContent className="bg-white/95 backdrop-blur-md border-gray-200 shadow-xl max-h-60">
+						<SelectContent>
 							{hourOptions.map((hour) => (
 								<SelectItem
 									key={hour}
-									value={hour}
-									className="hover:bg-purple-50 focus:bg-purple-50 transition-colors duration-150 font-mono">
+									value={hour}>
 									{hour}
 								</SelectItem>
 							))}
@@ -340,9 +380,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 					className="w-full h-14 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
 					disabled={isSubmitting}>
 					<Save className="h-5 w-5 mr-2" />
-					{isSubmitting
-						? "Menyimpan Data..."
-						: "Simpan Data Gas Storage"}
+					{isSubmitting ? "Menyimpan..." : "Simpan Data"}
 				</Button>
 			</div>
 		</form>

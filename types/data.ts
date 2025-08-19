@@ -46,7 +46,19 @@ export interface Customer {
 	name: string | null;
 }
 
+// --- Tipe Storage Diperbarui ---
 export interface Storage {
 	id: number;
 	storage_number: string;
+	type: "mobile" | "fixed";
+	customer_code: string | null;
+	default_quantity: number | null;
+}
+
+// --- Tipe untuk Storage BARU ---
+export interface NewStorage {
+	storage_number: string;
+	type: "mobile" | "fixed";
+	customer_code?: string | null;
+	default_quantity?: number | null;
 }

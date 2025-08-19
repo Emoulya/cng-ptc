@@ -4,17 +4,15 @@ import type {
 	ReadingWithFlowMeter,
 	Customer,
 	Storage,
+	NewStorage,
 } from "@/types/data";
-
 
 // === API Functions for Readings ===
 
 export const getAllReadings = async (): Promise<ReadingWithFlowMeter[]> => {
-	// Panggil fungsi RPC dengan parameter 'all'
 	const { data, error } = await supabase.rpc("get_readings_with_flowmeter", {
 		customer_code_param: "all",
 	});
-
 	if (error) throw error;
 	return data as ReadingWithFlowMeter[];
 };
@@ -23,11 +21,9 @@ export const getReadingsByCustomer = async (
 	customerCode: string
 ): Promise<ReadingWithFlowMeter[]> => {
 	if (!customerCode) return [];
-	// Panggil fungsi RPC dengan customerCode yang spesifik
 	const { data, error } = await supabase.rpc("get_readings_with_flowmeter", {
 		customer_code_param: customerCode,
 	});
-
 	if (error) throw error;
 	return data as ReadingWithFlowMeter[];
 };
@@ -71,19 +67,36 @@ export const deleteCustomer = async (id: number): Promise<void> => {
 
 // === API Functions for Storages ===
 
+// Mengambil SEMUA storage (untuk Admin)
 export const getStorages = async (): Promise<Storage[]> => {
 	const { data, error } = await supabase
 		.from("storages")
-		.select("id, storage_number")
+		.select("id, storage_number, type, customer_code, default_quantity")
 		.order("storage_number", { ascending: true });
 	if (error) throw error;
 	return data;
 };
 
-export const addStorage = async (storageNumber: string): Promise<void> => {
-	const { error } = await supabase
-		.from("storages")
-		.insert({ storage_number: storageNumber });
+// Mengambil storage yang relevan untuk operator
+export const getStoragesForOperator = async (
+	customerCode: string
+): Promise<Storage[]> => {
+	if (!customerCode) return [];
+	const { data, error } = await supabase.rpc("get_relevant_storages", {
+		customer_code_param: customerCode,
+	});
+	if (error) throw error;
+	return data as Storage[];
+};
+
+export const addStorage = async (storage: NewStorage): Promise<void> => {
+	const { error } = await supabase.from("storages").insert({
+		storage_number: storage.storage_number,
+		type: storage.type,
+		customer_code: storage.type === "fixed" ? storage.customer_code : null,
+		default_quantity:
+			storage.type === "fixed" ? storage.default_quantity : null,
+	});
 	if (error) throw error;
 };
 

@@ -1,10 +1,16 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getStorages, addStorage, deleteStorage } from "@/lib/api";
+import {
+	getStorages,
+	addStorage,
+	deleteStorage,
+	getStoragesForOperator,
+} from "@/lib/api";
 import { toast } from "sonner";
+import type { NewStorage } from "@/types/data";
 
-// Hook untuk mendapatkan data storages
+// Hook untuk mendapatkan SEMUA data storages (untuk Admin)
 export const useStorages = () => {
 	return useQuery({
 		queryKey: ["storages"],
@@ -12,18 +18,28 @@ export const useStorages = () => {
 	});
 };
 
-// Hook untuk menambah storage baru
+// Hook untuk mendapatkan storage yang relevan berdasarkan customer
+export const useStoragesForOperator = (customerCode: string) => {
+	return useQuery({
+		queryKey: ["storages", "operator", customerCode],
+		queryFn: () => getStoragesForOperator(customerCode),
+		enabled: !!customerCode,
+	});
+};
+
+// Hook untuk menambah storage baru (untuk Admin)
 export const useAddStorage = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: (storageNumber: string) => addStorage(storageNumber),
+		mutationFn: (storage: NewStorage) => addStorage(storage),
 		onSuccess: (_, variables) => {
-			toast.success(`Storage ${variables} berhasil ditambahkan`);
+			toast.success(
+				`Storage ${variables.storage_number} berhasil ditambahkan`
+			);
 			queryClient.invalidateQueries({ queryKey: ["storages"] });
 		},
 		onError: (error: any) => {
 			let description = "Terjadi kesalahan yang tidak diketahui.";
-			// Cek apakah pesan error mengandung teks untuk duplikat data
 			if (
 				error.message &&
 				error.message.includes(
@@ -42,7 +58,7 @@ export const useAddStorage = () => {
 	});
 };
 
-// Hook untuk menghapus storage
+// Hook untuk menghapus storage (untuk Admin)
 export const useDeleteStorage = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
