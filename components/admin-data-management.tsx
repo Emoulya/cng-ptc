@@ -39,17 +39,16 @@ import {
 } from "lucide-react";
 import { useAllReadings } from "@/hooks/use-readings";
 import * as XLSX from "xlsx";
+import type { ReadingWithFlowMeter } from "@/types/data";
 
 export function AdminDataManagement() {
 	const { data: allReadings = [], isLoading } = useAllReadings();
 
-	// State lokal hanya untuk filter dan UI
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedCustomer, setSelectedCustomer] = useState("all");
 	const [selectedOperator, setSelectedOperator] = useState("all");
 	const [isExporting, setIsExporting] = useState(false);
-
-	// Logika useMemo untuk filter tidak perlu diubah, hanya sumber datanya saja
+	``;
 	const { uniqueCustomers, uniqueOperators, todayReadings } = useMemo(() => {
 		const customers = Array.from(
 			new Set(allReadings.map((r) => r.customer_code))
@@ -87,7 +86,6 @@ export function AdminDataManagement() {
 		});
 	}, [allReadings, searchTerm, selectedCustomer, selectedOperator]);
 
-	// Fungsi format dan export
 	const formatDateTimeForDisplay = (timestamp: string) => {
 		const date = new Date(timestamp);
 		return {
@@ -215,7 +213,7 @@ export function AdminDataManagement() {
 
 	return (
 		<div className="space-y-6">
-			{/* Kartu Statistik di Atas */}
+			{/* Kartu Statistik */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -387,6 +385,7 @@ export function AdminDataManagement() {
 										<TableRow>
 											<TableHead>Customer</TableHead>
 											<TableHead>Storage</TableHead>
+											<TableHead>Jml. Storage</TableHead>
 											<TableHead>Date</TableHead>
 											<TableHead>Time</TableHead>
 											<TableHead>PSI</TableHead>
@@ -402,7 +401,7 @@ export function AdminDataManagement() {
 										{isLoading ? (
 											<TableRow>
 												<TableCell
-													colSpan={11}
+													colSpan={12}
 													className="text-center py-8">
 													<Loader2 className="h-6 w-6 animate-spin mx-auto" />
 												</TableCell>
@@ -417,59 +416,75 @@ export function AdminDataManagement() {
 												</TableCell>
 											</TableRow>
 										) : (
-											filteredData.map((row) => {
-												const { date, time } =
-													formatDateTimeForDisplay(
-														row.created_at
-													);
-												return (
-													<TableRow key={row.id}>
-														<TableCell>
-															<Badge variant="outline">
+											filteredData.map(
+												(row: ReadingWithFlowMeter) => {
+													const { date, time } =
+														formatDateTimeForDisplay(
+															row.created_at
+														);
+													return (
+														<TableRow key={row.id}>
+															<TableCell>
+																<Badge variant="outline">
+																	{
+																		row.customer_code
+																	}
+																</Badge>
+															</TableCell>
+															<TableCell>
 																{
-																	row.customer_code
+																	row.storage_number
 																}
-															</Badge>
-														</TableCell>
-														<TableCell>
-															{row.storage_number}
-														</TableCell>
-														<TableCell className="font-mono text-sm">
-															{date}
-														</TableCell>
-														<TableCell className="font-mono text-sm">
-															{time}
-														</TableCell>
-														<TableCell>
-															{String(row.psi)}
-														</TableCell>
-														<TableCell>
-															{String(row.temp)}°C
-														</TableCell>
-														<TableCell>
-															{String(
-																row.psi_out
-															)}
-														</TableCell>
-														<TableCell>
-															{String(
-																row.flow_turbine
-															)}
-														</TableCell>
-														<TableCell className="font-mono">
-															{row.flowMeter}
-														</TableCell>
-														<TableCell>
-															{row.profiles
-																?.username ||
-																"N/A"}
-														</TableCell>
-														<TableCell className="max-w-[200px] truncate">
-															{row.remarks || "-"}
-														</TableCell>
-													</TableRow>
-												);
-											})
+															</TableCell>
+															{/* Kolom Baru */}
+															<TableCell className="font-semibold">
+																{
+																	row.fixed_storage_quantity
+																}
+															</TableCell>
+															<TableCell className="font-mono text-sm">
+																{date}
+															</TableCell>
+															<TableCell className="font-mono text-sm">
+																{time}
+															</TableCell>
+															<TableCell>
+																{String(
+																	row.psi
+																)}
+															</TableCell>
+															<TableCell>
+																{String(
+																	row.temp
+																)}
+																°C
+															</TableCell>
+															<TableCell>
+																{String(
+																	row.psi_out
+																)}
+															</TableCell>
+															<TableCell>
+																{String(
+																	row.flow_turbine
+																)}
+															</TableCell>
+															<TableCell>
+																{row.flowMeter}
+															</TableCell>
+															<TableCell>
+																{row.profiles
+																	?.username ||
+																	"N/A"}
+															</TableCell>
+															<TableCell>
+																{row.remarks ||
+																	"-"}
+															</TableCell>
+														</TableRow>
+													);
+												}
+											)
 										)}
 									</TableBody>
 								</Table>
