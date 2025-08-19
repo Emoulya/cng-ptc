@@ -14,8 +14,11 @@ import { toast } from "sonner";
 import { Trash2, ShieldAlert, Loader2 } from "lucide-react";
 import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
 import { supabase } from "@/lib/supabase-client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function BulkOperations() {
+	const queryClient = useQueryClient();
+
 	const { data: allReadings = [], isLoading } = useAllReadings();
 	const { mutate: deleteReading, isPending: isDeletingSingle } =
 		useDeleteReading();
@@ -56,44 +59,41 @@ export function BulkOperations() {
 	const handleClearAllData = async () => {
 		// Fungsi ini spesifik dan jarang, jadi logikanya bisa tetap di sini
 		if (
-			confirm(
+			!window.confirm(
 				"APAKAH ANDA YAKIN? Semua data monitoring akan dihapus permanen dan tidak dapat dipulihkan."
 			)
 		) {
-			setIsDeletingAll(true);
-			try {
-				// Kita panggil RPC atau fungsi Supabase langsung di sini
-				const { data: allIds, error: fetchError } = await supabase
+			return;
+		}
+
+		setIsDeletingAll(true);
+		try {
+			// Kita panggil RPC atau fungsi Supabase langsung di sini
+			const { data: allIds, error: fetchError } = await supabase
+				.from("readings")
+				.select("id");
+			if (fetchError) throw fetchError;
+
+			if (allIds && allIds.length > 0) {
+				const idsToDelete = allIds.map((item) => item.id);
+				const { error: deleteError } = await supabase
 					.from("readings")
-					.select("id");
-				if (fetchError) throw fetchError;
-
-				if (allIds && allIds.length > 0) {
-					const idsToDelete = allIds.map((item) => item.id);
-					const { error: deleteError } = await supabase
-						.from("readings")
-						.delete()
-						.in("id", idsToDelete);
-					if (deleteError) throw deleteError;
-				}
-
-				toast.error("Semua Data Telah Dihapus", {
-					description: "Berhasil menghapus semua data gas storage.",
-				});
-
-				// Manually trigger refetch setelah semua data dihapus
-				// (meskipun useDeleteReading sudah invalidate, ini untuk memastikan)
-				const queryClient = (
-					await import("@tanstack/react-query")
-				).useQueryClient();
-				queryClient.invalidateQueries({ queryKey: ["readings"] });
-
-				setSelectedItems([]);
-			} catch (error: any) {
-				toast.error("Gagal Menghapus", { description: error.message });
-			} finally {
-				setIsDeletingAll(false);
+					.delete()
+					.in("id", idsToDelete);
+				if (deleteError) throw deleteError;
 			}
+
+			toast.error("Semua Data Telah Dihapus", {
+				description: "Berhasil menghapus semua data gas storage.",
+			});
+
+			queryClient.invalidateQueries({ queryKey: ["readings"] });
+
+			setSelectedItems([]);
+		} catch (error: any) {
+			toast.error("Gagal Menghapus", { description: error.message });
+		} finally {
+			setIsDeletingAll(false);
 		}
 	};
 
