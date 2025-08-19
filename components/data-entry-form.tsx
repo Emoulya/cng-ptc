@@ -12,13 +12,11 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useAddReading } from "@/hooks/use-readings";
 import { useStorages } from "@/hooks/use-storages";
 import {
-	Calendar,
 	Clock,
 	Thermometer,
 	Gauge,
@@ -54,14 +52,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		psiOut: "",
 		flowTurbine: "",
 		remarks: "",
-	});
-
-	const currentDate = new Date().toLocaleDateString("id-ID", {
-		timeZone: "Asia/Jakarta",
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-		weekday: "long",
 	});
 
 	const handleInputChange = (field: string, value: string) => {
@@ -134,25 +124,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		<form
 			onSubmit={handleSubmit}
 			className="space-y-6">
-			{/* Enhanced Date Display */}
-			<Card className="shadow-lg border-0 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 text-white overflow-hidden relative">
-				<div className="absolute inset-0 bg-black/10"></div>
-				<CardContent className="pt-6 relative z-10">
-					<div className="text-center">
-						<div className="flex items-center justify-center gap-2 mb-2">
-							<Calendar className="h-5 w-5" />
-							<p className="text-orange-100 font-medium">
-								Tanggal Pencatatan
-							</p>
-						</div>
-						<p className="text-2xl font-bold mb-1">{currentDate}</p>
-						<p className="text-xs text-orange-200 font-medium bg-black/20 inline-block px-3 py-1 rounded-full">
-							(Tanggal hari ini, tidak bisa diubah)
-						</p>
-					</div>
-				</CardContent>
-			</Card>
-
 			{/* Form Fields Grid */}
 			<div className="grid gap-6">
 				{/* Storage Selection */}
@@ -363,7 +334,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 					/>
 				</div>
 
-				{/* Enhanced Submit Button */}
+				{/* Submit Button */}
 				<Button
 					type="submit"
 					className="w-full h-14 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"

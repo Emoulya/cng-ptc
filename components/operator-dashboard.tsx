@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,8 +12,8 @@ import {
 	Plus,
 	BarChart3,
 	Activity,
-	Clock,
 	Database,
+	Calendar,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -23,6 +23,18 @@ export function OperatorDashboard() {
 	const [selectedCustomer, setSelectedCustomer] = useState<string>("");
 	const [showDataEntry, setShowDataEntry] = useState(false);
 	const [showDataTable, setShowDataTable] = useState(false);
+	const [currentTime, setCurrentTime] = useState(new Date());
+
+	useEffect(() => {
+		setShowDataEntry(false);
+		setShowDataTable(false);
+	}, [selectedCustomer]);
+
+	useEffect(() => {
+		// Update waktu setiap detik
+		const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+		return () => clearInterval(timer);
+	}, []);
 
 	const handleLogout = async () => {
 		await logout();
@@ -34,9 +46,24 @@ export function OperatorDashboard() {
 		setShowDataTable(true);
 	};
 
+	const formattedDate = currentTime.toLocaleDateString("id-ID", {
+		timeZone: "Asia/Jakarta",
+		year: "numeric",
+		month: "long",
+		day: "numeric",
+		weekday: "long",
+	});
+
+	const formattedTime = currentTime.toLocaleTimeString("id-ID", {
+		timeZone: "Asia/Jakarta",
+		hour: "2-digit",
+		minute: "2-digit",
+		second: "2-digit",
+	});
+
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-			{/* Enhanced Mobile Header */}
+			{/* Header */}
 			<div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 sticky top-0 z-10 shadow-lg backdrop-blur-sm">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-3">
@@ -63,7 +90,7 @@ export function OperatorDashboard() {
 			</div>
 
 			<div className="p-4 space-y-6">
-				{/* Enhanced Customer Selection Card */}
+				{/* Customer Selection */}
 				<Card className="shadow-lg border-0 bg-white/70 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
 					<CardHeader className="pb-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-t-lg">
 						<CardTitle className="text-lg flex items-center gap-2 text-gray-800">
@@ -81,7 +108,33 @@ export function OperatorDashboard() {
 
 				{selectedCustomer && (
 					<>
-						{/* Enhanced Action Buttons */}
+						{/* Card Waktu & Tanggal yang Digabung */}
+						<Card className="shadow-lg border-0 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 text-white overflow-hidden relative">
+							<div className="absolute inset-0 bg-black/10"></div>
+							<CardContent className="pt-6 relative z-10">
+								<div className="text-center">
+									<div className="flex items-center justify-center gap-2 mb-2">
+										<Calendar className="h-5 w-5" />
+										<p className="text-orange-100 font-medium">
+											Tanggal Pencatatan
+										</p>
+									</div>
+									<p className="text-2xl font-bold mb-3">
+										{formattedDate}
+									</p>
+									<div className="bg-black/20 inline-block px-4 py-2 rounded-lg">
+										<p className="text-lg font-mono font-bold tracking-wider">
+											{formattedTime}
+										</p>
+										<p className="text-xs text-orange-200 font-medium">
+											WIB (Server Time)
+										</p>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
+
+						{/* Action Buttons */}
 						<div className="grid grid-cols-2 gap-4">
 							<Button
 								onClick={() => {
@@ -106,36 +159,7 @@ export function OperatorDashboard() {
 							</Button>
 						</div>
 
-						{/* Enhanced Current Time Display */}
-						<Card className="shadow-lg border-0 bg-gradient-to-r from-blue-500 to-indigo-600 text-white overflow-hidden relative">
-							<div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
-							<CardContent className="pt-6 relative z-10">
-								<div className="text-center">
-									<div className="flex items-center justify-center gap-2 mb-2">
-										<Clock className="h-5 w-5" />
-										<p className="text-blue-100 font-medium">
-											Waktu Saat Ini
-										</p>
-									</div>
-									<p className="text-2xl font-mono font-bold mb-1">
-										{new Date().toLocaleString("id-ID", {
-											timeZone: "Asia/Jakarta",
-											year: "numeric",
-											month: "2-digit",
-											day: "2-digit",
-											hour: "2-digit",
-											minute: "2-digit",
-											second: "2-digit",
-										})}
-									</p>
-									<p className="text-xs text-blue-200 font-medium">
-										WIB (Server Time)
-									</p>
-								</div>
-							</CardContent>
-						</Card>
-
-						{/* Enhanced Conditional Content */}
+						{/* Conditional Content */}
 						{showDataEntry && (
 							<Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm overflow-hidden">
 								<CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
