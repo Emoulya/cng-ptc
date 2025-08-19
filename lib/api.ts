@@ -1,60 +1,35 @@
 import { supabase } from "@/lib/supabase-client";
 import type {
 	NewReading,
-	ReadingFromDB,
 	ReadingWithFlowMeter,
 	Customer,
 	Storage,
 } from "@/types/data";
 
-// --- Helper Function ---
-// Fungsi ini tidak berinteraksi langsung dengan API, jadi bisa tetap di sini.
-const calculateFlowMeter = (
-	readings: ReadingFromDB[]
-): ReadingWithFlowMeter[] => {
-	const sortedReadings = [...readings].sort(
-		(a, b) =>
-			new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-	);
-
-	return sortedReadings.map((reading, index) => {
-		const previousReading = sortedReadings
-			.slice(0, index)
-			.reverse()
-			.find((r) => r.storage_number === reading.storage_number);
-
-		let flowMeter: number | string = "-";
-		if (previousReading) {
-			const difference =
-				reading.flow_turbine - previousReading.flow_turbine;
-			flowMeter = difference >= 0 ? difference : "-";
-		}
-		return { ...reading, flowMeter };
-	});
-};
 
 // === API Functions for Readings ===
 
 export const getAllReadings = async (): Promise<ReadingWithFlowMeter[]> => {
-	const { data, error } = await supabase
-		.from("readings")
-		.select(`*, profiles(username)`)
-		.order("created_at", { ascending: false });
+	// Panggil fungsi RPC dengan parameter 'all'
+	const { data, error } = await supabase.rpc("get_readings_with_flowmeter", {
+		customer_code_param: "all",
+	});
+
 	if (error) throw error;
-	return calculateFlowMeter(data as ReadingFromDB[]);
+	return data as ReadingWithFlowMeter[];
 };
 
 export const getReadingsByCustomer = async (
 	customerCode: string
 ): Promise<ReadingWithFlowMeter[]> => {
 	if (!customerCode) return [];
-	const { data, error } = await supabase
-		.from("readings")
-		.select(`*, profiles(username)`)
-		.eq("customer_code", customerCode)
-		.order("created_at", { ascending: false });
+	// Panggil fungsi RPC dengan customerCode yang spesifik
+	const { data, error } = await supabase.rpc("get_readings_with_flowmeter", {
+		customer_code_param: customerCode,
+	});
+
 	if (error) throw error;
-	return calculateFlowMeter(data as ReadingFromDB[]);
+	return data as ReadingWithFlowMeter[];
 };
 
 export const addReading = async (reading: NewReading): Promise<void> => {

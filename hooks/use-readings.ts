@@ -28,7 +28,7 @@ export const useReadingsByCustomer = (customerCode: string) => {
 };
 
 // Hook untuk MENAMBAH data reading baru
-export const useAddReading = () => {
+export const useAddReading = (options?: { onSuccess?: () => void }) => {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: (newReading: NewReading) => addReading(newReading),
@@ -42,6 +42,8 @@ export const useAddReading = () => {
 			});
 			// Invalidate queries agar data di UI otomatis ter-update
 			queryClient.invalidateQueries({ queryKey: ["readings"] });
+
+			options?.onSuccess?.();
 		},
 		onError: (error: Error) => {
 			toast.error("Gagal Menyimpan Data", {
