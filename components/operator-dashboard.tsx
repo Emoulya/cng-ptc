@@ -54,13 +54,6 @@ export function OperatorDashboard() {
 		weekday: "long",
 	});
 
-	const formattedTime = currentTime.toLocaleTimeString("id-ID", {
-		timeZone: "Asia/Jakarta",
-		hour: "2-digit",
-		minute: "2-digit",
-		second: "2-digit",
-	});
-
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
 			{/* Header */}
@@ -108,7 +101,7 @@ export function OperatorDashboard() {
 
 				{selectedCustomer && (
 					<>
-						{/* Card Waktu & Tanggal yang Digabung */}
+						{/* Card Tanggal */}
 						<Card className="shadow-lg border-0 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 text-white overflow-hidden relative">
 							<div className="absolute inset-0 bg-black/10"></div>
 							<CardContent className="pt-6 relative z-10">
@@ -122,14 +115,6 @@ export function OperatorDashboard() {
 									<p className="text-2xl font-bold mb-3">
 										{formattedDate}
 									</p>
-									<div className="bg-black/20 inline-block px-4 py-2 rounded-lg">
-										<p className="text-lg font-mono font-bold tracking-wider">
-											{formattedTime}
-										</p>
-										<p className="text-xs text-orange-200 font-medium">
-											WIB (Server Time)
-										</p>
-									</div>
 								</div>
 							</CardContent>
 						</Card>
