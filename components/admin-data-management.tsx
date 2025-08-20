@@ -48,7 +48,7 @@ export function AdminDataManagement() {
 	const [selectedCustomer, setSelectedCustomer] = useState("all");
 	const [selectedOperator, setSelectedOperator] = useState("all");
 	const [isExporting, setIsExporting] = useState(false);
-	``;
+
 	const { uniqueCustomers, uniqueOperators, todayReadings } = useMemo(() => {
 		const customers = Array.from(
 			new Set(allReadings.map((r) => r.customer_code))
@@ -86,6 +86,7 @@ export function AdminDataManagement() {
 		});
 	}, [allReadings, searchTerm, selectedCustomer, selectedOperator]);
 
+	// --- FUNGSI DIPERBAIKI DI SINI ---
 	const formatDateTimeForDisplay = (timestamp: string) => {
 		const date = new Date(timestamp);
 		return {
@@ -94,9 +95,11 @@ export function AdminDataManagement() {
 				month: "2-digit",
 				year: "numeric",
 			}),
+			// Tambahkan timeZone: "UTC" untuk menampilkan waktu sesuai database
 			time: date.toLocaleTimeString("id-ID", {
 				hour: "2-digit",
 				minute: "2-digit",
+				timeZone: "UTC", // <-- Perbaikan Timezone
 			}),
 		};
 	};
@@ -108,7 +111,6 @@ export function AdminDataManagement() {
 		}
 		setIsExporting(true);
 		try {
-			// Mengambil file template dari folder public
 			const response = await fetch("/template-laporan.xlsm");
 			if (!response.ok) {
 				throw new Error(
@@ -152,8 +154,8 @@ export function AdminDataManagement() {
 						null,
 						Number(row.fixed_storage_quantity),
 						storageAsNumber,
-						timestampDate, // Kolom G (Date)
-						timestampDate, // Kolom H (Time)
+						timestampDate,
+						timestampDate,
 						Number(row.psi),
 						Number(row.temp),
 						Number(row.psi_out),
@@ -171,7 +173,6 @@ export function AdminDataManagement() {
 					cellDates: true,
 				});
 
-				// Set format tanggal dan waktu secara eksplisit
 				customerData.forEach((_, rowIndex) => {
 					const currentRow = 10 + rowIndex;
 					const dateCellAddress = `G${currentRow}`;
@@ -187,7 +188,6 @@ export function AdminDataManagement() {
 				XLSX.utils.book_append_sheet(workbook, newSheet, customer);
 			});
 
-			// Hapus sheet template setelah selesai
 			delete workbook.Sheets[templateSheetName];
 			workbook.SheetNames = workbook.SheetNames.filter(
 				(name) => name !== templateSheetName
@@ -226,9 +226,6 @@ export function AdminDataManagement() {
 						<div className="text-2xl font-bold">
 							{uniqueCustomers.length}
 						</div>
-						<p className="text-xs text-muted-foreground">
-							Active monitoring sites
-						</p>
 					</CardContent>
 				</Card>
 				<Card>
@@ -242,9 +239,6 @@ export function AdminDataManagement() {
 						<div className="text-2xl font-bold">
 							{uniqueOperators.length}
 						</div>
-						<p className="text-xs text-muted-foreground">
-							Total operators
-						</p>
 					</CardContent>
 				</Card>
 				<Card>
@@ -258,9 +252,6 @@ export function AdminDataManagement() {
 						<div className="text-2xl font-bold">
 							{todayReadings}
 						</div>
-						<p className="text-xs text-muted-foreground">
-							Data points collected
-						</p>
 					</CardContent>
 				</Card>
 				<Card>
@@ -274,9 +265,6 @@ export function AdminDataManagement() {
 						<div className="text-2xl font-bold">
 							{allReadings.length}
 						</div>
-						<p className="text-xs text-muted-foreground">
-							All time entries
-						</p>
 					</CardContent>
 				</Card>
 			</div>
@@ -409,7 +397,7 @@ export function AdminDataManagement() {
 										) : filteredData.length === 0 ? (
 											<TableRow>
 												<TableCell
-													colSpan={11}
+													colSpan={12}
 													className="text-center text-gray-500 py-8">
 													No entries match your
 													filters
@@ -436,16 +424,15 @@ export function AdminDataManagement() {
 																	row.storage_number
 																}
 															</TableCell>
-															{/* Kolom Baru */}
 															<TableCell className="font-semibold">
 																{
 																	row.fixed_storage_quantity
 																}
 															</TableCell>
-															<TableCell className="font-mono text-sm">
+															<TableCell>
 																{date}
 															</TableCell>
-															<TableCell className="font-mono text-sm">
+															<TableCell>
 																{time}
 															</TableCell>
 															<TableCell>
