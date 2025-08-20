@@ -36,10 +36,12 @@ import {
 	Activity,
 	Database,
 	AlertTriangle,
+	ArrowUpDown,
 } from "lucide-react";
 import { useAllReadings } from "@/hooks/use-readings";
 import * as XLSX from "xlsx";
 import type { ReadingWithFlowMeter } from "@/types/data";
+import { toast } from "sonner";
 
 export function AdminDataManagement() {
 	const { data: allReadings = [], isLoading } = useAllReadings();
@@ -47,6 +49,7 @@ export function AdminDataManagement() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedCustomer, setSelectedCustomer] = useState("all");
 	const [selectedOperator, setSelectedOperator] = useState("all");
+	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 	const [isExporting, setIsExporting] = useState(false);
 
 	const { uniqueCustomers, uniqueOperators, todayReadings } = useMemo(() => {
@@ -68,7 +71,7 @@ export function AdminDataManagement() {
 	}, [allReadings]);
 
 	const filteredData = useMemo(() => {
-		return allReadings.filter((item) => {
+		const filtered = allReadings.filter((item) => {
 			const operatorUsername =
 				item.profiles?.username?.toLowerCase() || "";
 			const matchesSearch =
@@ -84,9 +87,24 @@ export function AdminDataManagement() {
 				item.profiles?.username === selectedOperator;
 			return matchesSearch && matchesCustomer && matchesOperator;
 		});
-	}, [allReadings, searchTerm, selectedCustomer, selectedOperator]);
 
-	// --- FUNGSI DIPERBAIKI DI SINI ---
+		return filtered.sort((a, b) => {
+			const dateA = new Date(a.created_at).getTime();
+			const dateB = new Date(b.created_at).getTime();
+			if (sortOrder === "asc") {
+				return dateA - dateB;
+			} else {
+				return dateB - dateA;
+			}
+		});
+	}, [
+		allReadings,
+		searchTerm,
+		selectedCustomer,
+		selectedOperator,
+		sortOrder,
+	]);
+
 	const formatDateTimeForDisplay = (timestamp: string) => {
 		const date = new Date(timestamp);
 		return {
@@ -95,18 +113,17 @@ export function AdminDataManagement() {
 				month: "2-digit",
 				year: "numeric",
 			}),
-			// Tambahkan timeZone: "UTC" untuk menampilkan waktu sesuai database
 			time: date.toLocaleTimeString("id-ID", {
 				hour: "2-digit",
 				minute: "2-digit",
-				timeZone: "UTC", // <-- Perbaikan Timezone
+				timeZone: "UTC",
 			}),
 		};
 	};
 
 	const handleExport = async () => {
 		if (filteredData.length === 0) {
-			alert("Tidak ada data untuk diekspor.");
+			toast.warning("Tidak ada data untuk diekspor.");
 			return;
 		}
 		setIsExporting(true);
@@ -199,13 +216,12 @@ export function AdminDataManagement() {
 			);
 		} catch (error) {
 			console.error("Gagal melakukan export:", error);
-			alert(
-				`Gagal melakukan export: ${
+			toast.error("Gagal Export", {
+				description:
 					error instanceof Error
 						? error.message
-						: "Kesalahan tidak diketahui."
-				}`
-			);
+						: "Terjadi kesalahan.",
+			});
 		} finally {
 			setIsExporting(false);
 		}
@@ -213,7 +229,6 @@ export function AdminDataManagement() {
 
 	return (
 		<div className="space-y-6">
-			{/* Kartu Statistik */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -339,6 +354,27 @@ export function AdminDataManagement() {
 												{operator}
 											</SelectItem>
 										))}
+									</SelectContent>
+								</Select>
+
+								<Select
+									value={sortOrder}
+									onValueChange={(value: "asc" | "desc") =>
+										setSortOrder(value)
+									}>
+									<SelectTrigger className="w-full md:w-[180px]">
+										<div className="flex items-center gap-2">
+											<ArrowUpDown className="h-4 w-4" />
+											<SelectValue placeholder="Urutkan..." />
+										</div>
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="asc">
+											Terlama (Asc)
+										</SelectItem>
+										<SelectItem value="desc">
+											Terbaru (Desc)
+										</SelectItem>
 									</SelectContent>
 								</Select>
 
