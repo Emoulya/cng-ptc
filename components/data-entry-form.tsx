@@ -35,7 +35,6 @@ interface DataEntryFormProps {
 	onSuccess?: () => void;
 }
 
-
 export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 	const { mutate: addReading, isPending: isSubmitting } = useAddReading();
 	const { data: storages = [], isLoading: isLoadingStorages } =
@@ -117,20 +116,18 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 			return;
 		}
 
-		// --- LOGIKA PEMBULATAN WAKTU ---
-		const today = new Date();
+		const localDate = new Date();
+		const year = localDate.getFullYear();
+		const month = localDate.getMonth();
+		const day = localDate.getDate();
 		const [hourStr, minuteStr] = formData.recordingTime.split(":");
-		let hour = parseInt(hourStr, 10);
-		const minute = parseInt(minuteStr, 10);
-
-		// Terapkan aturan pembulatan
-		if (minute >= 30) {
-			hour += 1;
+		let inputHour = parseInt(hourStr, 10);
+		const inputMinute = parseInt(minuteStr, 10);
+		if (inputMinute >= 30) {
+			inputHour += 1;
 		}
-
-		// Atur waktu final (menit dan detik selalu 0)
-		today.setHours(hour, 0, 0, 0);
-		const finalTimestamp = today.toISOString();
+		const utcDate = new Date(Date.UTC(year, month, day, inputHour, 0, 0));
+		const finalTimestamp = utcDate.toISOString();
 
 		addReading(
 			{
@@ -243,7 +240,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 					</div>
 				)}
 
-				{/* --- INPUT WAKTU --- */}
+				{/* Input Waktu */}
 				<div className="space-y-3">
 					<Label
 						htmlFor="recordingTime"
