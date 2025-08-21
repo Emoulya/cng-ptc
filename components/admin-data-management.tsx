@@ -39,13 +39,14 @@ import {
 	ArrowUpDown,
 } from "lucide-react";
 import { useAllReadings } from "@/hooks/use-readings";
+import { useCustomers } from "@/hooks/use-customers";
 import * as XLSX from "xlsx";
 import type { ReadingWithFlowMeter } from "@/types/data";
 import { toast } from "sonner";
 
 export function AdminDataManagement() {
 	const { data: allReadings = [], isLoading } = useAllReadings();
-
+	const { data: customers = [] } = useCustomers();
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedCustomer, setSelectedCustomer] = useState("all");
 	const [selectedOperator, setSelectedOperator] = useState("all");
@@ -53,19 +54,17 @@ export function AdminDataManagement() {
 	const [isExporting, setIsExporting] = useState(false);
 
 	const { uniqueCustomers, uniqueOperators, todayReadings } = useMemo(() => {
-		const customers = Array.from(
-			new Set(allReadings.map((r) => r.customer_code))
-		);
-		const operators = Array.from(
-			new Set(allReadings.map((r) => r.profiles?.username || "Unknown"))
+		const customersSet = new Set(allReadings.map((r) => r.customer_code));
+		const operatorsSet = new Set(
+			allReadings.map((r) => r.profiles?.username || "Unknown")
 		);
 		const today = new Date().toDateString();
 		const readingsToday = allReadings.filter(
 			(r) => new Date(r.created_at).toDateString() === today
 		).length;
 		return {
-			uniqueCustomers: customers,
-			uniqueOperators: operators,
+			uniqueCustomers: Array.from(customersSet),
+			uniqueOperators: Array.from(operatorsSet),
 			todayReadings: readingsToday,
 		};
 	}, [allReadings]);
@@ -130,9 +129,7 @@ export function AdminDataManagement() {
 		try {
 			const response = await fetch("/template-laporan.xlsm");
 			if (!response.ok) {
-				throw new Error(
-					"Gagal memuat file template. Pastikan file 'template-laporan.xlsm' ada di dalam folder /public."
-				);
+				throw new Error("Gagal memuat file template.");
 			}
 			const arrayBuffer = await response.arrayBuffer();
 			const workbook = XLSX.read(arrayBuffer, { type: "buffer" });
@@ -143,26 +140,42 @@ export function AdminDataManagement() {
 			const templateSheetName = "sheet1";
 			const templateWorksheet = workbook.Sheets[templateSheetName];
 			if (!templateWorksheet) {
-				throw new Error(
-					`Sheet dengan nama "${templateSheetName}" tidak ditemukan di template.`
-				);
+				throw new Error("Sheet 'sheet1' tidak ditemukan.");
 			}
 
-			customersToExport.forEach((customer) => {
+			customersToExport.forEach((customerCode) => {
 				const newSheet = JSON.parse(JSON.stringify(templateWorksheet));
+
+				const customerInfo = customers.find(
+					(c) => c.code === customerCode
+				);
+				const customerName = customerInfo?.name || customerCode;
+				const cellAddress = "I5";
+				const cell = { t: "s", v: `PT. ${customerName}` };
+				newSheet[cellAddress] = cell;
+				if (!newSheet["!merges"]) newSheet["!merges"] = [];
+				newSheet["!merges"].push({
+					s: { r: 4, c: 8 },
+					e: { r: 5, c: 10 },
+				});
+
 				const customerData = filteredData.filter(
-					(row) => row.customer_code === customer
+					(row) => row.customer_code === customerCode
 				);
 
 				const dataForSheet = customerData.map((row) => {
-					const timestampDate = new Date(row.created_at);
+					const d = new Date(row.created_at);
+					const timezoneOffset = d.getTimezoneOffset() * 60000;
+					const correctedDate = new Date(
+						d.getTime() + timezoneOffset
+					);
+
 					const storageAsNumber = isNaN(parseInt(row.storage_number))
 						? row.storage_number
 						: parseInt(row.storage_number);
-					const flowMeterAsNumber =
-						typeof row.flowMeter === "string"
-							? row.flowMeter
-							: Number(row.flowMeter);
+
+					const flowMeterValue =
+						row.flowMeter === "" ? "" : Number(row.flowMeter);
 
 					return [
 						null,
@@ -171,13 +184,13 @@ export function AdminDataManagement() {
 						null,
 						Number(row.fixed_storage_quantity),
 						storageAsNumber,
-						timestampDate,
-						timestampDate,
+						correctedDate,
+						correctedDate,
 						Number(row.psi),
 						Number(row.temp),
 						Number(row.psi_out),
 						Number(row.flow_turbine),
-						flowMeterAsNumber,
+						Number(flowMeterValue),
 						null,
 						null,
 						null,
@@ -198,11 +211,23 @@ export function AdminDataManagement() {
 					}
 					const timeCellAddress = `H${currentRow}`;
 					if (newSheet[timeCellAddress]) {
-						newSheet[timeCellAddress].z = "hh:mm:ss";
+						newSheet[timeCellAddress].z = "hh:mm";
+					}
+					const cellN = `N${currentRow}`;
+					if (newSheet[cellN]) {
+						newSheet[cellN].z = "#,##0;[Red]-#,##0";
+					}
+					const cellO = `O${currentRow}`;
+					if (newSheet[cellO]) {
+						newSheet[cellO].z = "#,##0;[Red]-#,##0";
+					}
+					const cellP = `P${currentRow}`;
+					if (newSheet[cellP]) {
+						newSheet[cellP].z = "0.00%";
 					}
 				});
 
-				XLSX.utils.book_append_sheet(workbook, newSheet, customer);
+				XLSX.utils.book_append_sheet(workbook, newSheet, customerCode);
 			});
 
 			delete workbook.Sheets[templateSheetName];
