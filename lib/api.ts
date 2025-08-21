@@ -29,8 +29,24 @@ export const getReadingsByCustomer = async (
 };
 
 export const addReading = async (reading: NewReading): Promise<void> => {
-	const { error } = await supabase.from("readings").insert(reading);
-	if (error) throw error;
+	// Panggil fungsi RPC 'add_reading_with_backfill'
+	const { error } = await supabase.rpc("add_reading_with_backfill", {
+		p_created_at: reading.created_at,
+		p_customer_code: reading.customer_code,
+		p_operator_id: reading.operator_id,
+		p_storage_number: reading.storage_number,
+		p_fixed_storage_quantity: reading.fixed_storage_quantity,
+		p_psi: reading.psi,
+		p_temp: reading.temp,
+		p_psi_out: reading.psi_out,
+		p_flow_turbine: reading.flow_turbine,
+		p_remarks: reading.remarks,
+	});
+
+	if (error) {
+		console.error("RPC Error:", error);
+		throw error;
+	}
 };
 
 export const deleteReading = async (id: number): Promise<void> => {
