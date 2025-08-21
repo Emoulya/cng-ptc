@@ -26,6 +26,17 @@ import {
 	useAddCustomer,
 	useDeleteCustomer,
 } from "@/hooks/use-customers";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function CustomerManagement() {
 	const { data: customers = [], isLoading } = useCustomers();
@@ -53,10 +64,8 @@ export function CustomerManagement() {
 		);
 	};
 
-	const handleDeleteCustomer = (id: number, code: string) => {
-		if (confirm(`Apakah Anda yakin ingin menghapus pelanggan ${code}?`)) {
-			deleteCustomer(id);
-		}
+	const handleDeleteCustomer = (id: number) => {
+		deleteCustomer(id);
 	};
 
 	return (
@@ -143,17 +152,45 @@ export function CustomerManagement() {
 										</TableCell>
 										<TableCell>{c.name || "-"}</TableCell>
 										<TableCell>
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() =>
-													handleDeleteCustomer(
-														c.id,
-														c.code
-													)
-												}>
-												<Trash2 className="h-4 w-4 text-red-500" />
-											</Button>
+											<AlertDialog>
+												<AlertDialogTrigger asChild>
+													<Button
+														variant="ghost"
+														size="sm">
+														<Trash2 className="h-4 w-4 text-red-500" />
+													</Button>
+												</AlertDialogTrigger>
+												<AlertDialogContent>
+													<AlertDialogHeader>
+														<AlertDialogTitle>
+															Apakah Anda yakin?
+														</AlertDialogTitle>
+														<AlertDialogDescription>
+															Tindakan ini akan
+															menghapus pelanggan{" "}
+															<span className="font-bold">
+																{c.code}
+															</span>{" "}
+															secara permanen.
+															Data tidak dapat
+															dikembalikan.
+														</AlertDialogDescription>
+													</AlertDialogHeader>
+													<AlertDialogFooter>
+														<AlertDialogCancel>
+															Batal
+														</AlertDialogCancel>
+														<AlertDialogAction
+															onClick={() =>
+																handleDeleteCustomer(
+																	c.id
+																)
+															}>
+															Ya, Hapus
+														</AlertDialogAction>
+													</AlertDialogFooter>
+												</AlertDialogContent>
+											</AlertDialog>
 										</TableCell>
 									</TableRow>
 								))}

@@ -15,6 +15,17 @@ import { Trash2, ShieldAlert, Loader2 } from "lucide-react";
 import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
 import { supabase } from "@/lib/supabase-client";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function BulkOperations() {
 	const queryClient = useQueryClient();
@@ -46,29 +57,16 @@ export function BulkOperations() {
 			});
 			return;
 		}
-
-		// Promise.all agar semua proses delete berjalan paralel
 		await Promise.all(selectedItems.map((id) => deleteReading(id)));
-
 		toast.success("Data Terhapus", {
 			description: `Berhasil menghapus ${selectedItems.length} entri data.`,
 		});
-		setSelectedItems([]); // Reset pilihan
+		setSelectedItems([]);
 	};
 
 	const handleClearAllData = async () => {
-		// Fungsi ini spesifik dan jarang, jadi logikanya bisa tetap di sini
-		if (
-			!window.confirm(
-				"APAKAH ANDA YAKIN? Semua data monitoring akan dihapus permanen dan tidak dapat dipulihkan."
-			)
-		) {
-			return;
-		}
-
 		setIsDeletingAll(true);
 		try {
-			// Kita panggil RPC atau fungsi Supabase langsung di sini
 			const { data: allIds, error: fetchError } = await supabase
 				.from("readings")
 				.select("id");
@@ -88,7 +86,6 @@ export function BulkOperations() {
 			});
 
 			queryClient.invalidateQueries({ queryKey: ["readings"] });
-
 			setSelectedItems([]);
 		} catch (error: any) {
 			toast.error("Gagal Menghapus", { description: error.message });
@@ -210,20 +207,49 @@ export function BulkOperations() {
 									)}
 									Hapus Pilihan ({selectedItems.length})
 								</Button>
-								<Button
-									variant="outline"
-									className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-									onClick={handleClearAllData}
-									disabled={
-										allReadings.length === 0 || isProcessing
-									}>
-									{isDeletingAll ? (
-										<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-									) : (
-										<Trash2 className="h-4 w-4 mr-2" />
-									)}
-									Hapus Semua Data
-								</Button>
+								<AlertDialog>
+									<AlertDialogTrigger asChild>
+										<Button
+											variant="outline"
+											className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+											disabled={
+												allReadings.length === 0 ||
+												isProcessing
+											}>
+											{isDeletingAll ? (
+												<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+											) : (
+												<Trash2 className="h-4 w-4 mr-2" />
+											)}
+											Hapus Semua Data
+										</Button>
+									</AlertDialogTrigger>
+									<AlertDialogContent>
+										<AlertDialogHeader>
+											<AlertDialogTitle>
+												APAKAH ANDA YAKIN?
+											</AlertDialogTitle>
+											<AlertDialogDescription>
+												Tindakan ini akan{" "}
+												<span className="font-bold text-red-600">
+													menghapus SEMUA data
+													monitoring
+												</span>{" "}
+												secara permanen dan tidak dapat
+												dipulihkan.
+											</AlertDialogDescription>
+										</AlertDialogHeader>
+										<AlertDialogFooter>
+											<AlertDialogCancel>
+												Batal
+											</AlertDialogCancel>
+											<AlertDialogAction
+												onClick={handleClearAllData}>
+												Ya, Hapus Semua
+											</AlertDialogAction>
+										</AlertDialogFooter>
+									</AlertDialogContent>
+								</AlertDialog>
 							</div>
 						</>
 					)}

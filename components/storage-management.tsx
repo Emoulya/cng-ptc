@@ -27,6 +27,17 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { PlusCircle, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -42,7 +53,6 @@ export function StorageManagement() {
 	const { mutate: addStorage, isPending: isSubmitting } = useAddStorage();
 	const { mutate: deleteStorage } = useDeleteStorage();
 
-	// State baru untuk form yang lebih kompleks
 	const [newStorageNumber, setNewStorageNumber] = useState("");
 	const [newStorageType, setNewStorageType] = useState<"mobile" | "fixed">(
 		"mobile"
@@ -66,7 +76,6 @@ export function StorageManagement() {
 				return;
 			}
 		}
-
 		addStorage(
 			{
 				storage_number: newStorageNumber,
@@ -80,7 +89,6 @@ export function StorageManagement() {
 			},
 			{
 				onSuccess: () => {
-					// Reset semua state form
 					setNewStorageNumber("");
 					setNewStorageType("mobile");
 					setSelectedCustomerCode("");
@@ -90,14 +98,8 @@ export function StorageManagement() {
 		);
 	};
 
-	const handleDeleteStorage = (id: number, storageNumber: string) => {
-		if (
-			window.confirm(
-				`Apakah Anda yakin ingin menghapus storage ${storageNumber}?`
-			)
-		) {
-			deleteStorage(id);
-		}
+	const handleDeleteStorage = (id: number) => {
+		deleteStorage(id);
 	};
 
 	return (
@@ -124,7 +126,6 @@ export function StorageManagement() {
 								required
 							/>
 						</div>
-
 						<div className="space-y-2">
 							<Label htmlFor="storageType">Tipe Storage</Label>
 							<Select
@@ -141,8 +142,6 @@ export function StorageManagement() {
 								</SelectContent>
 							</Select>
 						</div>
-
-						{/* Input kondisional untuk tipe 'fixed' */}
 						{newStorageType === "fixed" && (
 							<>
 								<div className="space-y-2">
@@ -182,7 +181,6 @@ export function StorageManagement() {
 								</div>
 							</>
 						)}
-
 						<Button
 							type="submit"
 							disabled={isSubmitting}
@@ -243,17 +241,45 @@ export function StorageManagement() {
 											{s.default_quantity || "-"}
 										</TableCell>
 										<TableCell>
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() =>
-													handleDeleteStorage(
-														s.id,
-														s.storage_number
-													)
-												}>
-												<Trash2 className="h-4 w-4 text-red-500" />
-											</Button>
+											<AlertDialog>
+												<AlertDialogTrigger asChild>
+													<Button
+														variant="ghost"
+														size="sm">
+														<Trash2 className="h-4 w-4 text-red-500" />
+													</Button>
+												</AlertDialogTrigger>
+												<AlertDialogContent>
+													<AlertDialogHeader>
+														<AlertDialogTitle>
+															Apakah Anda yakin?
+														</AlertDialogTitle>
+														<AlertDialogDescription>
+															Tindakan ini akan
+															menghapus storage{" "}
+															<span className="font-bold">
+																{
+																	s.storage_number
+																}
+															</span>{" "}
+															secara permanen.
+														</AlertDialogDescription>
+													</AlertDialogHeader>
+													<AlertDialogFooter>
+														<AlertDialogCancel>
+															Batal
+														</AlertDialogCancel>
+														<AlertDialogAction
+															onClick={() =>
+																handleDeleteStorage(
+																	s.id
+																)
+															}>
+															Ya, Hapus
+														</AlertDialogAction>
+													</AlertDialogFooter>
+												</AlertDialogContent>
+											</AlertDialog>
 										</TableCell>
 									</TableRow>
 								))}
