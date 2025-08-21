@@ -5,6 +5,8 @@ import type {
 	Customer,
 	Storage,
 	NewStorage,
+	UpdateCustomer,
+	UpdateStorage,
 } from "@/types/data";
 
 // Definisikan tipe untuk filter
@@ -94,6 +96,19 @@ export const addCustomer = async (customer: {
 	if (error) throw error;
 };
 
+export const updateCustomer = async (
+	customer: UpdateCustomer
+): Promise<void> => {
+	const { error } = await supabase
+		.from("customers")
+		.update({
+			code: customer.code?.toUpperCase(),
+			name: customer.name || null,
+		})
+		.match({ id: customer.id });
+	if (error) throw error;
+};
+
 export const deleteCustomer = async (id: number): Promise<void> => {
 	const { error } = await supabase.from("customers").delete().match({ id });
 	if (error) throw error;
@@ -121,6 +136,21 @@ export const getStoragesForOperator = async (
 	});
 	if (error) throw error;
 	return data as Storage[];
+};
+
+export const updateStorage = async (storage: UpdateStorage): Promise<void> => {
+	const { error } = await supabase
+		.from("storages")
+		.update({
+			storage_number: storage.storage_number,
+			type: storage.type,
+			customer_code:
+				storage.type === "fixed" ? storage.customer_code : null,
+			default_quantity:
+				storage.type === "fixed" ? storage.default_quantity : null,
+		})
+		.match({ id: storage.id });
+	if (error) throw error;
 };
 
 export const addStorage = async (storage: NewStorage): Promise<void> => {

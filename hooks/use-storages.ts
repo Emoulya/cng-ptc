@@ -6,9 +6,10 @@ import {
 	addStorage,
 	deleteStorage,
 	getStoragesForOperator,
+	updateStorage,
 } from "@/lib/api";
+import type { NewStorage, UpdateStorage } from "@/types/data";
 import { toast } from "sonner";
-import type { NewStorage } from "@/types/data";
 
 // Hook untuk mendapatkan SEMUA data storages (untuk Admin)
 export const useStorages = () => {
@@ -52,6 +53,37 @@ export const useAddStorage = () => {
 				description = error.message;
 			}
 			toast.error("Gagal menambah storage", {
+				description: description,
+			});
+		},
+	});
+};
+
+// Hook untuk meng-update storage (untuk Admin)
+export const useUpdateStorage = () => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (storage: UpdateStorage) => updateStorage(storage),
+		onSuccess: (_, variables) => {
+			toast.success(
+				`Storage ${variables.storage_number} berhasil diperbarui`
+			);
+			queryClient.invalidateQueries({ queryKey: ["storages"] });
+		},
+		onError: (error: any) => {
+			let description = "Terjadi kesalahan yang tidak diketahui.";
+			if (
+				error.message &&
+				error.message.includes(
+					"duplicate key value violates unique constraint"
+				)
+			) {
+				description =
+					"Nomor storage sudah ada. Harap gunakan nomor lain.";
+			} else if (error.message) {
+				description = error.message;
+			}
+			toast.error("Gagal memperbarui storage", {
 				description: description,
 			});
 		},

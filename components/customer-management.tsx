@@ -19,13 +19,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { PlusCircle, Trash2, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import {
-	useCustomers,
-	useAddCustomer,
-	useDeleteCustomer,
-} from "@/hooks/use-customers";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -37,15 +30,44 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+	DialogFooter,
+	DialogClose,
+} from "@/components/ui/dialog";
+import { PlusCircle, Trash2, Loader2, Pencil } from "lucide-react";
+import { toast } from "sonner";
+import {
+	useCustomers,
+	useAddCustomer,
+	useDeleteCustomer,
+	useUpdateCustomer,
+} from "@/hooks/use-customers";
+import type { Customer } from "@/types/data";
 
 export function CustomerManagement() {
+	// Hooks untuk data dan mutasi
 	const { data: customers = [], isLoading } = useCustomers();
 	const { mutate: addCustomer, isPending: isSubmitting } = useAddCustomer();
 	const { mutate: deleteCustomer } = useDeleteCustomer();
+	const { mutate: updateCustomer, isPending: isUpdating } =
+		useUpdateCustomer();
 
+	// State untuk form tambah
 	const [newCustomerCode, setNewCustomerCode] = useState("");
 	const [newCustomerName, setNewCustomerName] = useState("");
 
+	// State untuk form edit
+	const [editingCustomer, setEditingCustomer] = useState<Customer | null>(
+		null
+	);
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+	// Handler untuk menambah pelanggan baru
 	const handleAddCustomer = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!newCustomerCode) {
@@ -56,7 +78,6 @@ export function CustomerManagement() {
 			{ code: newCustomerCode, name: newCustomerName || null },
 			{
 				onSuccess: () => {
-					// Reset form setelah berhasil
 					setNewCustomerCode("");
 					setNewCustomerName("");
 				},
@@ -64,13 +85,34 @@ export function CustomerManagement() {
 		);
 	};
 
+	// Handler untuk menghapus pelanggan
 	const handleDeleteCustomer = (id: number) => {
 		deleteCustomer(id);
 	};
 
+	// Handler untuk memperbarui pelanggan
+	const handleUpdateCustomer = (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!editingCustomer) return;
+		// Hanya update nama, karena kode tidak boleh diubah
+		updateCustomer(
+			{
+				id: editingCustomer.id,
+				name: editingCustomer.name || null,
+				code: editingCustomer.code,
+			},
+			{
+				onSuccess: () => {
+					setIsEditDialogOpen(false);
+					setEditingCustomer(null);
+				},
+			}
+		);
+	};
+
 	return (
 		<div className="grid md:grid-cols-2 gap-6">
-			{/* Kolom Formulir */}
+			{/* Kolom Formulir Tambah */}
 			<Card>
 				<CardHeader>
 					<CardTitle>Tambah Pelanggan Baru</CardTitle>
@@ -151,7 +193,113 @@ export function CustomerManagement() {
 											{c.code}
 										</TableCell>
 										<TableCell>{c.name || "-"}</TableCell>
-										<TableCell>
+										<TableCell className="flex gap-1">
+											{/* Tombol Edit */}
+											<Dialog
+												open={
+													isEditDialogOpen &&
+													editingCustomer?.id === c.id
+												}
+												onOpenChange={(open) => {
+													setIsEditDialogOpen(open);
+													if (!open)
+														setEditingCustomer(
+															null
+														);
+												}}>
+												<DialogTrigger asChild>
+													<Button
+														variant="ghost"
+														size="sm"
+														onClick={() => {
+															setEditingCustomer(
+																c
+															);
+															setIsEditDialogOpen(
+																true
+															);
+														}}>
+														<Pencil className="h-4 w-4 text-blue-500" />
+													</Button>
+												</DialogTrigger>
+												<DialogContent>
+													<DialogHeader>
+														<DialogTitle>
+															Edit Pelanggan:{" "}
+															{
+																editingCustomer?.code
+															}
+														</DialogTitle>
+													</DialogHeader>
+													<form
+														onSubmit={
+															handleUpdateCustomer
+														}
+														className="space-y-4 py-4">
+														<div className="space-y-2">
+															<Label htmlFor="editCustomerCode">
+																Kode
+															</Label>
+															<Input
+																id="editCustomerCode"
+																value={
+																	editingCustomer?.code ||
+																	""
+																}
+																disabled={true} // <-- PERUBAHAN DI SINI
+																className="cursor-not-allowed bg-gray-100"
+															/>
+														</div>
+														<div className="space-y-2">
+															<Label htmlFor="editCustomerName">
+																Nama
+															</Label>
+															<Input
+																id="editCustomerName"
+																value={
+																	editingCustomer?.name ||
+																	""
+																}
+																onChange={(e) =>
+																	setEditingCustomer(
+																		(
+																			prev
+																		) =>
+																			prev && {
+																				...prev,
+																				name: e
+																					.target
+																					.value,
+																			}
+																	)
+																}
+															/>
+														</div>
+														<DialogFooter>
+															<DialogClose
+																asChild>
+																<Button
+																	type="button"
+																	variant="secondary">
+																	Batal
+																</Button>
+															</DialogClose>
+															<Button
+																type="submit"
+																disabled={
+																	isUpdating
+																}>
+																{isUpdating && (
+																	<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+																)}
+																Simpan Perubahan
+															</Button>
+														</DialogFooter>
+													</form>
+												</DialogContent>
+											</Dialog>
+
+											{/* Tombol Hapus */}
 											<AlertDialog>
 												<AlertDialogTrigger asChild>
 													<Button
@@ -172,8 +320,6 @@ export function CustomerManagement() {
 																{c.code}
 															</span>{" "}
 															secara permanen.
-															Data tidak dapat
-															dikembalikan.
 														</AlertDialogDescription>
 													</AlertDialogHeader>
 													<AlertDialogFooter>

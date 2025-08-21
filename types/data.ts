@@ -62,3 +62,19 @@ export interface NewStorage {
 	customer_code?: string | null;
 	default_quantity?: number | null;
 }
+
+// --- Tipe untuk UPDATE Storage ---
+export interface UpdateStorage extends Partial<NewStorage> {
+	id: number;
+}
+
+export interface Customer {
+	id: number;
+	code: string;
+	name: string | null;
+}
+
+// --- Tipe untuk UPDATE Customer ---
+export interface UpdateCustomer extends Partial<Omit<Customer, "id">> {
+	id: number;
+}

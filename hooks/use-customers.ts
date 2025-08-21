@@ -1,7 +1,13 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCustomers, addCustomer, deleteCustomer } from "@/lib/api";
+import {
+	getCustomers,
+	addCustomer,
+	deleteCustomer,
+	updateCustomer,
+} from "@/lib/api";
+import type { UpdateCustomer } from "@/types/data";
 import { toast } from "sonner";
 
 // Hook untuk mendapatkan data customers
@@ -39,6 +45,37 @@ export const useAddCustomer = () => {
 				description = error.message;
 			}
 			toast.error("Gagal menambah pelanggan", {
+				description: description,
+			});
+		},
+	});
+};
+
+// Hook untuk meng-update customer
+export const useUpdateCustomer = () => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (customer: UpdateCustomer) => updateCustomer(customer),
+		onSuccess: (_, variables) => {
+			toast.success(
+				`Pelanggan ${variables.code?.toUpperCase()} berhasil diperbarui`
+			);
+			queryClient.invalidateQueries({ queryKey: ["customers"] });
+		},
+		onError: (error: any) => {
+			let description = "Terjadi kesalahan yang tidak diketahui.";
+			if (
+				error.message &&
+				error.message.includes(
+					"duplicate key value violates unique constraint"
+				)
+			) {
+				description =
+					"Kode pelanggan sudah ada. Harap gunakan kode lain.";
+			} else if (error.message) {
+				description = error.message;
+			}
+			toast.error("Gagal memperbarui pelanggan", {
 				description: description,
 			});
 		},
