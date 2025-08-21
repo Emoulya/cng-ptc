@@ -7,6 +7,7 @@ import type {
 	NewStorage,
 	UpdateCustomer,
 	UpdateStorage,
+	UpdateReading,
 } from "@/types/data";
 
 // Definisikan tipe untuk filter
@@ -67,6 +68,22 @@ export const addReading = async (reading: NewReading): Promise<void> => {
 		console.error("RPC Error:", error);
 		throw error;
 	}
+};
+
+export const updateReading = async (reading: UpdateReading): Promise<void> => {
+	const { error } = await supabase
+		.from("readings")
+		.update({
+			storage_number: reading.storage_number,
+			fixed_storage_quantity: reading.fixed_storage_quantity,
+			created_at: reading.created_at,
+			psi: reading.psi,
+			temp: reading.temp,
+			psi_out: reading.psi_out,
+			flow_turbine: reading.flow_turbine,
+		})
+		.match({ id: reading.id });
+	if (error) throw error;
 };
 
 export const deleteReading = async (id: number): Promise<void> => {

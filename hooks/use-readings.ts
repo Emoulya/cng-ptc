@@ -6,10 +6,11 @@ import {
 	addReading,
 	deleteReading,
 	getReadingsByCustomer,
+	updateReading,
 } from "@/lib/api";
 import type { ReadingFilters } from "@/lib/api";
 import { toast } from "sonner";
-import type { NewReading } from "@/types/data";
+import type { NewReading, UpdateReading } from "@/types/data";
 
 // Hook untuk mendapatkan SEMUA data readings
 export const useAllReadings = (filters: ReadingFilters) => {
@@ -49,6 +50,23 @@ export const useAddReading = (options?: { onSuccess?: () => void }) => {
 		onError: (error: Error) => {
 			toast.error("Gagal Menyimpan Data", {
 				description: error.message || "Terjadi kesalahan. Coba lagi.",
+			});
+		},
+	});
+};
+
+// Hook untuk MENGUPDATE satu data reading
+export const useUpdateReading = () => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (reading: UpdateReading) => updateReading(reading),
+		onSuccess: () => {
+			toast.success("Data berhasil diperbarui");
+			queryClient.invalidateQueries({ queryKey: ["readings"] });
+		},
+		onError: (error: Error) => {
+			toast.error("Gagal memperbarui data", {
+				description: error.message,
 			});
 		},
 	});

@@ -37,8 +37,36 @@ import {
 	Database,
 	AlertTriangle,
 	ArrowUpDown,
+	MoreHorizontal,
+	Edit,
+	Trash2,
 } from "lucide-react";
-import { useAllReadings } from "@/hooks/use-readings";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
+import { EditReadingForm } from "./edit-reading-form";
 import { useCustomers } from "@/hooks/use-customers";
 import * as XLSX from "xlsx";
 import type { ReadingWithFlowMeter } from "@/types/data";
@@ -65,6 +93,10 @@ export function AdminDataManagement() {
 	const [selectedOperator, setSelectedOperator] = useState("all");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 	const [isExporting, setIsExporting] = useState(false);
+	const { mutate: deleteReading } = useDeleteReading();
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+	const [selectedReading, setSelectedReading] =
+		useState<ReadingWithFlowMeter | null>(null);
 
 	// Debounce search term untuk mencegah API call berlebihan saat mengetik
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -253,6 +285,10 @@ export function AdminDataManagement() {
 		} finally {
 			setIsExporting(false);
 		}
+	};
+
+	const handleDelete = (id: number) => {
+		deleteReading(id);
 	};
 
 	return (
@@ -530,6 +566,116 @@ export function AdminDataManagement() {
 															<TableCell>
 																{row.remarks ||
 																	"-"}
+															</TableCell>
+																														<TableCell>
+																<Dialog
+																	open={
+																		isEditDialogOpen &&
+																		selectedReading
+																			?.id ===
+																			row.id
+																	}
+																	onOpenChange={
+																		setIsEditDialogOpen
+																	}>
+																	<AlertDialog>
+																		<DropdownMenu>
+																			<DropdownMenuTrigger
+																				asChild>
+																				<Button
+																					variant="ghost"
+																					className="h-8 w-8 p-0">
+																					<span className="sr-only">
+																						Open
+																						menu
+																					</span>
+																					<MoreHorizontal className="h-4 w-4" />
+																				</Button>
+																			</DropdownMenuTrigger>
+																			<DropdownMenuContent align="end">
+																				<DialogTrigger
+																					asChild>
+																					<DropdownMenuItem
+																						onClick={() =>
+																							setSelectedReading(
+																								row
+																							)
+																						}>
+																						<Edit className="mr-2 h-4 w-4" />
+																						<span>
+																							Edit
+																						</span>
+																					</DropdownMenuItem>
+																				</DialogTrigger>
+																				<AlertDialogTrigger
+																					asChild>
+																					<DropdownMenuItem>
+																						<Trash2 className="mr-2 h-4 w-4" />
+																						<span>
+																							Hapus
+																						</span>
+																					</DropdownMenuItem>
+																				</AlertDialogTrigger>
+																			</DropdownMenuContent>
+																		</DropdownMenu>
+																		<AlertDialogContent>
+																			<AlertDialogHeader>
+																				<AlertDialogTitle>
+																					Apakah
+																					Anda
+																					yakin?
+																				</AlertDialogTitle>
+																				<AlertDialogDescription>
+																					Tindakan
+																					ini
+																					akan
+																					menghapus
+																					data
+																					secara
+																					permanen.
+																				</AlertDialogDescription>
+																			</AlertDialogHeader>
+																			<AlertDialogFooter>
+																				<AlertDialogCancel>
+																					Batal
+																				</AlertDialogCancel>
+																				<AlertDialogAction
+																					onClick={() =>
+																						handleDelete(
+																							row.id
+																						)
+																					}>
+																					Ya,
+																					Hapus
+																				</AlertDialogAction>
+																			</AlertDialogFooter>
+																		</AlertDialogContent>
+																	</AlertDialog>
+																	<DialogContent>
+																		<DialogHeader>
+																			<DialogTitle>
+																				Edit
+																				Data
+																				Reading
+																			</DialogTitle>
+																		</DialogHeader>
+																		{selectedReading && (
+																			<EditReadingForm
+																				reading={
+																					selectedReading
+																				}
+																				onSuccess={() => {
+																					setIsEditDialogOpen(
+																						false
+																					);
+																					setSelectedReading(
+																						null
+																					);
+																				}}
+																			/>
+																		)}
+																	</DialogContent>
+																</Dialog>
 															</TableCell>
 														</TableRow>
 													);

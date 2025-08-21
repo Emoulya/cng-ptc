@@ -29,6 +29,18 @@ export interface NewReading {
 	remarks: string;
 }
 
+// Tipe data untuk UPDATE reading
+export interface UpdateReading {
+	id: number;
+	storage_number?: string;
+	fixed_storage_quantity?: number;
+	created_at?: string;
+	psi?: number;
+	temp?: number;
+	psi_out?: number;
+	flow_turbine?: number;
+}
+
 // Tipe data setelah flow_meter dihitung di client
 export interface ReadingWithFlowMeter extends ReadingFromDB {
 	flowMeter: number | string;
