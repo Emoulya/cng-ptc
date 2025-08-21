@@ -21,7 +21,13 @@ interface AnalyticsData {
 }
 
 export function AdminAnalytics() {
-	const { data: readings = [], isLoading } = useAllReadings();
+	// Panggil useAllReadings dengan filter default untuk mengambil semua data
+	const { data: readings = [], isLoading } = useAllReadings({
+		customer: "all",
+		operator: "all",
+		searchTerm: "",
+		sortOrder: "asc",
+	});
 
 	// Gunakan useMemo untuk menghitung data analitik hanya saat data 'readings' berubah
 	const analyticsData = useMemo<AnalyticsData>(() => {

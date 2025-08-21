@@ -10,11 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
-import { Trash2, ShieldAlert, Loader2 } from "lucide-react";
-import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
-import { supabase } from "@/lib/supabase-client";
-import { useQueryClient } from "@tanstack/react-query";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -26,15 +21,26 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { Trash2, ShieldAlert, Loader2 } from "lucide-react";
+import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
+import { supabase } from "@/lib/supabase-client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function BulkOperations() {
 	const queryClient = useQueryClient();
 
-	const { data: allReadings = [], isLoading } = useAllReadings();
+	// Panggil useAllReadings dengan filter default untuk mengambil semua data
+	const { data: allReadings = [], isLoading } = useAllReadings({
+		customer: "all",
+		operator: "all",
+		searchTerm: "",
+		sortOrder: "asc",
+	});
+
 	const { mutate: deleteReading, isPending: isDeletingSingle } =
 		useDeleteReading();
 
-	// State lokal untuk UI
 	const [selectedItems, setSelectedItems] = useState<number[]>([]);
 	const [isDeletingAll, setIsDeletingAll] = useState(false);
 

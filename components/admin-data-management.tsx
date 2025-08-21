@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
 	Card,
 	CardContent,
@@ -44,22 +44,60 @@ import * as XLSX from "xlsx";
 import type { ReadingWithFlowMeter } from "@/types/data";
 import { toast } from "sonner";
 
+// --- Hook custom untuk debounce ---
+function useDebounce<T>(value: T, delay: number): T {
+	const [debouncedValue, setDebouncedValue] = useState<T>(value);
+	useEffect(() => {
+		const handler = setTimeout(() => {
+			setDebouncedValue(value);
+		}, delay);
+		return () => {
+			clearTimeout(handler);
+		};
+	}, [value, delay]);
+	return debouncedValue;
+}
+
 export function AdminDataManagement() {
-	const { data: allReadings = [], isLoading } = useAllReadings();
-	const { data: customers = [] } = useCustomers();
+	// State untuk filter UI
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedCustomer, setSelectedCustomer] = useState("all");
 	const [selectedOperator, setSelectedOperator] = useState("all");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 	const [isExporting, setIsExporting] = useState(false);
 
+	// Debounce search term untuk mencegah API call berlebihan saat mengetik
+	const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+	// Gabungkan semua filter menjadi satu objek untuk dikirim ke hook
+	const filters = useMemo(
+		() => ({
+			customer: selectedCustomer,
+			operator: selectedOperator,
+			searchTerm: debouncedSearchTerm,
+			sortOrder: sortOrder,
+		}),
+		[selectedCustomer, selectedOperator, debouncedSearchTerm, sortOrder]
+	);
+
+	const { data: readings = [], isLoading } = useAllReadings(filters);
+	const { data: customers = [] } = useCustomers();
+	const { data: allReadingsForStats = [] } = useAllReadings({
+		customer: "all",
+		operator: "all",
+		searchTerm: "",
+		sortOrder: "asc",
+	});
+
 	const { uniqueCustomers, uniqueOperators, todayReadings } = useMemo(() => {
-		const customersSet = new Set(allReadings.map((r) => r.customer_code));
+		const customersSet = new Set(
+			allReadingsForStats.map((r) => r.customer_code)
+		);
 		const operatorsSet = new Set(
-			allReadings.map((r) => r.profiles?.username || "Unknown")
+			allReadingsForStats.map((r) => r.profiles?.username || "Unknown")
 		);
 		const today = new Date().toDateString();
-		const readingsToday = allReadings.filter(
+		const readingsToday = allReadingsForStats.filter(
 			(r) => new Date(r.created_at).toDateString() === today
 		).length;
 		return {
@@ -67,42 +105,7 @@ export function AdminDataManagement() {
 			uniqueOperators: Array.from(operatorsSet),
 			todayReadings: readingsToday,
 		};
-	}, [allReadings]);
-
-	const filteredData = useMemo(() => {
-		const filtered = allReadings.filter((item) => {
-			const operatorUsername =
-				item.profiles?.username?.toLowerCase() || "";
-			const matchesSearch =
-				item.customer_code
-					.toLowerCase()
-					.includes(searchTerm.toLowerCase()) ||
-				operatorUsername.includes(searchTerm.toLowerCase());
-			const matchesCustomer =
-				selectedCustomer === "all" ||
-				item.customer_code === selectedCustomer;
-			const matchesOperator =
-				selectedOperator === "all" ||
-				item.profiles?.username === selectedOperator;
-			return matchesSearch && matchesCustomer && matchesOperator;
-		});
-
-		return filtered.sort((a, b) => {
-			const dateA = new Date(a.created_at).getTime();
-			const dateB = new Date(b.created_at).getTime();
-			if (sortOrder === "asc") {
-				return dateA - dateB;
-			} else {
-				return dateB - dateA;
-			}
-		});
-	}, [
-		allReadings,
-		searchTerm,
-		selectedCustomer,
-		selectedOperator,
-		sortOrder,
-	]);
+	}, [allReadingsForStats]);
 
 	const formatDateTimeForDisplay = (timestamp: string) => {
 		const date = new Date(timestamp);
@@ -121,7 +124,7 @@ export function AdminDataManagement() {
 	};
 
 	const handleExport = async () => {
-		if (filteredData.length === 0) {
+		if (readings.length === 0) {
 			toast.warning("Tidak ada data untuk diekspor.");
 			return;
 		}
@@ -135,7 +138,7 @@ export function AdminDataManagement() {
 			const workbook = XLSX.read(arrayBuffer, { type: "buffer" });
 
 			const customersToExport = Array.from(
-				new Set(filteredData.map((r) => r.customer_code))
+				new Set(readings.map((r) => r.customer_code))
 			);
 			const templateSheetName = "sheet1";
 			const templateWorksheet = workbook.Sheets[templateSheetName];
@@ -159,7 +162,7 @@ export function AdminDataManagement() {
 					e: { r: 5, c: 10 },
 				});
 
-				const customerData = filteredData.filter(
+				const customerData = readings.filter(
 					(row) => row.customer_code === customerCode
 				);
 
@@ -190,7 +193,7 @@ export function AdminDataManagement() {
 						Number(row.temp),
 						Number(row.psi_out),
 						Number(row.flow_turbine),
-						Number(flowMeterValue),
+						flowMeterValue,
 						null,
 						null,
 						null,
@@ -303,12 +306,11 @@ export function AdminDataManagement() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{allReadings.length}
+							{allReadingsForStats.length}
 						</div>
 					</CardContent>
 				</Card>
 			</div>
-
 			<Tabs
 				defaultValue="data"
 				className="space-y-4">
@@ -423,8 +425,8 @@ export function AdminDataManagement() {
 						<CardHeader>
 							<CardTitle>Recent Data Entries</CardTitle>
 							<CardDescription>
-								Menampilkan {filteredData.length} dari{" "}
-								{allReadings.length} data
+								Menampilkan {readings.length} dari{" "}
+								{allReadingsForStats.length} data
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
@@ -455,7 +457,7 @@ export function AdminDataManagement() {
 													<Loader2 className="h-6 w-6 animate-spin mx-auto" />
 												</TableCell>
 											</TableRow>
-										) : filteredData.length === 0 ? (
+										) : readings.length === 0 ? (
 											<TableRow>
 												<TableCell
 													colSpan={12}
@@ -465,7 +467,7 @@ export function AdminDataManagement() {
 												</TableCell>
 											</TableRow>
 										) : (
-											filteredData.map(
+											readings.map(
 												(row: ReadingWithFlowMeter) => {
 													const { date, time } =
 														formatDateTimeForDisplay(

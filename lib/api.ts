@@ -7,12 +7,27 @@ import type {
 	NewStorage,
 } from "@/types/data";
 
+// Definisikan tipe untuk filter
+export interface ReadingFilters {
+	customer: string;
+	operator: string;
+	searchTerm: string;
+	sortOrder: "asc" | "desc";
+}
+
 // === API Functions for Readings ===
 
-export const getAllReadings = async (): Promise<ReadingWithFlowMeter[]> => {
+export const getAllReadings = async (
+	filters: ReadingFilters
+): Promise<ReadingWithFlowMeter[]> => {
+	// Panggil RPC dengan semua parameter filter
 	const { data, error } = await supabase.rpc("get_readings_with_flowmeter", {
-		customer_code_param: "all",
+		customer_filter: filters.customer,
+		operator_filter: filters.operator,
+		search_term: filters.searchTerm,
+		sort_order: filters.sortOrder,
 	});
+
 	if (error) throw error;
 	return data as ReadingWithFlowMeter[];
 };
@@ -22,7 +37,10 @@ export const getReadingsByCustomer = async (
 ): Promise<ReadingWithFlowMeter[]> => {
 	if (!customerCode) return [];
 	const { data, error } = await supabase.rpc("get_readings_with_flowmeter", {
-		customer_code_param: customerCode,
+		customer_filter: customerCode,
+		operator_filter: "all",
+		search_term: "",
+		sort_order: "asc",
 	});
 	if (error) throw error;
 	return data as ReadingWithFlowMeter[];

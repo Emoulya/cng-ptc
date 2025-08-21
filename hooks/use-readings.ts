@@ -7,14 +7,15 @@ import {
 	deleteReading,
 	getReadingsByCustomer,
 } from "@/lib/api";
+import type { ReadingFilters } from "@/lib/api";
 import { toast } from "sonner";
 import type { NewReading } from "@/types/data";
 
 // Hook untuk mendapatkan SEMUA data readings
-export const useAllReadings = () => {
+export const useAllReadings = (filters: ReadingFilters) => {
 	return useQuery({
-		queryKey: ["readings"],
-		queryFn: getAllReadings,
+		queryKey: ["readings", filters],
+		queryFn: () => getAllReadings(filters),
 	});
 };
 
