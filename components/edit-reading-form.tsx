@@ -16,13 +16,22 @@ import { useStoragesForOperator } from "@/hooks/use-storages";
 import type { ReadingWithFlowMeter } from "@/types/data";
 import { Loader2 } from "lucide-react";
 
-// --- Fungsi Bantuan untuk Zona Waktu ---
+// Helper function untuk konversi UTC ke local datetime string
 const toLocalISOString = (date: Date) => {
-	const tzoffset = date.getTimezoneOffset() * 60000;
-	const localISOTime = new Date(date.getTime() - tzoffset)
-		.toISOString()
-		.slice(0, 16);
-	return localISOTime;
+	const tzOffset = -date.getTimezoneOffset();
+	const diff = tzOffset >= 0 ? "+" : "-";
+	const pad = (n: number) => `${Math.floor(Math.abs(n))}`.padStart(2, "0");
+	return (
+		date.getFullYear() +
+		"-" +
+		pad(date.getMonth() + 1) +
+		"-" +
+		pad(date.getDate()) +
+		"T" +
+		pad(date.getHours()) +
+		":" +
+		pad(date.getMinutes())
+	);
 };
 
 interface EditReadingFormProps {
@@ -34,7 +43,6 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 	const [formData, setFormData] = useState({
 		storage_number: reading.storage_number,
 		fixed_storage_quantity: reading.fixed_storage_quantity,
-		// Gunakan fungsi bantuan untuk menampilkan waktu lokal yang benar
 		created_at: toLocalISOString(new Date(reading.created_at)),
 		psi: reading.psi,
 		temp: reading.temp,
@@ -55,18 +63,19 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		const utcDate = new Date(formData.created_at);
+		const { created_at, ...updateData } = formData;
 
 		updateReading(
 			{
 				id: reading.id,
-				storage_number: formData.storage_number,
-				fixed_storage_quantity: Number(formData.fixed_storage_quantity),
-				created_at: utcDate.toISOString(), // Kirim sebagai UTC
-				psi: Number(formData.psi),
-				temp: Number(formData.temp),
-				psi_out: Number(formData.psi_out),
-				flow_turbine: Number(formData.flow_turbine),
+				...updateData,
+				fixed_storage_quantity: Number(
+					updateData.fixed_storage_quantity
+				),
+				psi: Number(updateData.psi),
+				temp: Number(updateData.temp),
+				psi_out: Number(updateData.psi_out),
+				flow_turbine: Number(updateData.flow_turbine),
 			},
 			{
 				onSuccess: () => {
@@ -129,9 +138,8 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 					id="created_at"
 					type="datetime-local"
 					value={formData.created_at}
-					onChange={(e) =>
-						handleInputChange("created_at", e.target.value)
-					}
+					disabled
+					className="cursor-not-allowed bg-gray-100"
 				/>
 			</div>
 			<div className="grid grid-cols-2 gap-4">
