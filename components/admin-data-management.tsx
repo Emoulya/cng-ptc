@@ -1,3 +1,5 @@
+// cng-ptc-fix3/components/admin-data-management.tsx
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -41,6 +43,11 @@ import {
 	Edit,
 	Trash2,
 } from "lucide-react";
+import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
+import { useCustomers } from "@/hooks/use-customers";
+import * as XLSX from "xlsx";
+import type { ReadingWithFlowMeter } from "@/types/data";
+import { toast } from "sonner";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -65,12 +72,7 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
 import { EditReadingForm } from "./edit-reading-form";
-import { useCustomers } from "@/hooks/use-customers";
-import * as XLSX from "xlsx";
-import type { ReadingWithFlowMeter } from "@/types/data";
-import { toast } from "sonner";
 
 // --- Hook custom untuk debounce ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -93,10 +95,6 @@ export function AdminDataManagement() {
 	const [selectedOperator, setSelectedOperator] = useState("all");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 	const [isExporting, setIsExporting] = useState(false);
-	const { mutate: deleteReading } = useDeleteReading();
-	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-	const [selectedReading, setSelectedReading] =
-		useState<ReadingWithFlowMeter | null>(null);
 
 	// Debounce search term untuk mencegah API call berlebihan saat mengetik
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -120,6 +118,11 @@ export function AdminDataManagement() {
 		searchTerm: "",
 		sortOrder: "asc",
 	});
+
+	const { mutate: deleteReading } = useDeleteReading();
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+	const [selectedReading, setSelectedReading] =
+		useState<ReadingWithFlowMeter | null>(null);
 
 	const { uniqueCustomers, uniqueOperators, todayReadings } = useMemo(() => {
 		const customersSet = new Set(
@@ -153,6 +156,10 @@ export function AdminDataManagement() {
 				timeZone: "UTC",
 			}),
 		};
+	};
+
+	const handleDelete = (id: number) => {
+		deleteReading(id);
 	};
 
 	const handleExport = async () => {
@@ -285,10 +292,6 @@ export function AdminDataManagement() {
 		} finally {
 			setIsExporting(false);
 		}
-	};
-
-	const handleDelete = (id: number) => {
-		deleteReading(id);
 	};
 
 	return (
@@ -471,8 +474,8 @@ export function AdminDataManagement() {
 									<TableHeader>
 										<TableRow>
 											<TableHead>Customer</TableHead>
-											<TableHead>Storage</TableHead>
 											<TableHead>Jml. Storage</TableHead>
+											<TableHead>Storage</TableHead>
 											<TableHead>Date</TableHead>
 											<TableHead>Time</TableHead>
 											<TableHead>PSI</TableHead>
@@ -482,13 +485,14 @@ export function AdminDataManagement() {
 											<TableHead>Flow Meter</TableHead>
 											<TableHead>Operator</TableHead>
 											<TableHead>Remarks</TableHead>
+											<TableHead>Actions</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
 										{isLoading ? (
 											<TableRow>
 												<TableCell
-													colSpan={12}
+													colSpan={13}
 													className="text-center py-8">
 													<Loader2 className="h-6 w-6 animate-spin mx-auto" />
 												</TableCell>
@@ -496,7 +500,7 @@ export function AdminDataManagement() {
 										) : readings.length === 0 ? (
 											<TableRow>
 												<TableCell
-													colSpan={12}
+													colSpan={13}
 													className="text-center text-gray-500 py-8">
 													No entries match your
 													filters
@@ -518,14 +522,14 @@ export function AdminDataManagement() {
 																	}
 																</Badge>
 															</TableCell>
-															<TableCell>
-																{
-																	row.storage_number
-																}
-															</TableCell>
 															<TableCell className="font-semibold">
 																{
 																	row.fixed_storage_quantity
+																}
+															</TableCell>
+															<TableCell>
+																{
+																	row.storage_number
 																}
 															</TableCell>
 															<TableCell>
@@ -567,12 +571,11 @@ export function AdminDataManagement() {
 																{row.remarks ||
 																	"-"}
 															</TableCell>
-																														<TableCell>
+															<TableCell>
 																<Dialog
 																	open={
 																		isEditDialogOpen &&
-																		selectedReading
-																			?.id ===
+																		selectedReading?.id ===
 																			row.id
 																	}
 																	onOpenChange={

@@ -16,6 +16,15 @@ import { useStoragesForOperator } from "@/hooks/use-storages";
 import type { ReadingWithFlowMeter } from "@/types/data";
 import { Loader2 } from "lucide-react";
 
+// --- Fungsi Bantuan untuk Zona Waktu ---
+const toLocalISOString = (date: Date) => {
+	const tzoffset = date.getTimezoneOffset() * 60000;
+	const localISOTime = new Date(date.getTime() - tzoffset)
+		.toISOString()
+		.slice(0, 16);
+	return localISOTime;
+};
+
 interface EditReadingFormProps {
 	reading: ReadingWithFlowMeter;
 	onSuccess: () => void;
@@ -25,7 +34,8 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 	const [formData, setFormData] = useState({
 		storage_number: reading.storage_number,
 		fixed_storage_quantity: reading.fixed_storage_quantity,
-		created_at: new Date(reading.created_at).toISOString().slice(0, 16),
+		// Gunakan fungsi bantuan untuk menampilkan waktu lokal yang benar
+		created_at: toLocalISOString(new Date(reading.created_at)),
 		psi: reading.psi,
 		temp: reading.temp,
 		psi_out: reading.psi_out,
@@ -45,12 +55,14 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
+		const utcDate = new Date(formData.created_at);
+
 		updateReading(
 			{
 				id: reading.id,
 				storage_number: formData.storage_number,
 				fixed_storage_quantity: Number(formData.fixed_storage_quantity),
-				created_at: new Date(formData.created_at).toISOString(),
+				created_at: utcDate.toISOString(), // Kirim sebagai UTC
 				psi: Number(formData.psi),
 				temp: Number(formData.temp),
 				psi_out: Number(formData.psi_out),
