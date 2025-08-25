@@ -46,6 +46,19 @@ export interface ReadingWithFlowMeter extends ReadingFromDB {
 	flowMeter: number | string;
 }
 
+// Tipe data untuk baris "CHANGE"
+export interface ChangeSummaryRow {
+	id: string;
+	isChangeRow: true;
+	totalFlow: number;
+	duration: string;
+	customer_code: string;
+	created_at: string;
+}
+
+// Tipe gabungan untuk tabel
+export type TableRowData = ReadingWithFlowMeter | ChangeSummaryRow;
+
 export interface UserProfile {
 	id: string;
 	username: string;

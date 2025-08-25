@@ -1,5 +1,3 @@
-// cng-ptc-fix3/components/admin-data-management.tsx
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -46,7 +44,11 @@ import {
 import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
 import { useCustomers } from "@/hooks/use-customers";
 import * as XLSX from "xlsx";
-import type { ReadingWithFlowMeter } from "@/types/data";
+import type {
+	ReadingWithFlowMeter,
+	TableRowData,
+	ChangeSummaryRow,
+} from "@/types/data";
 import { toast } from "sonner";
 import {
 	DropdownMenu,
@@ -158,8 +160,89 @@ export function AdminDataManagement() {
 		};
 	};
 
-	const handleDelete = (id: number) => {
-		deleteReading(id);
+	const processedReadings = useMemo(() => {
+		if (!readings || readings.length === 0) return [];
+
+		const result: TableRowData[] = [];
+		let currentStorageBlock: ReadingWithFlowMeter[] = [];
+
+		for (let i = 0; i < readings.length; i++) {
+			const currentReading = readings[i];
+			const nextReading = readings[i + 1];
+
+			currentStorageBlock.push(currentReading);
+
+			if (
+				!nextReading ||
+				nextReading.storage_number !== currentReading.storage_number
+			) {
+				result.push(...currentStorageBlock);
+
+				const totalFlow = currentStorageBlock.reduce((sum, r) => {
+					const flow = Number(r.flowMeter);
+					return sum + (isNaN(flow) ? 0 : flow);
+				}, 0);
+
+				const startTime = new Date(currentStorageBlock[0].created_at);
+				const endTime = new Date(
+					currentStorageBlock[
+						currentStorageBlock.length - 1
+					].created_at
+				);
+				const diffMs = endTime.getTime() - startTime.getTime();
+				const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+				const diffMins = Math.floor(
+					(diffMs % (1000 * 60 * 60)) / (1000 * 60)
+				);
+				const duration = `${diffHours} jam ${diffMins} menit`;
+
+				// Hanya buat baris "CHANGE" jika ada lebih dari satu entri data
+				if (currentStorageBlock.length > 1) {
+					// Buat dan tambahkan baris "CHANGE"
+					const changeRow: ChangeSummaryRow = {
+						id: `change-${currentReading.id}`,
+						isChangeRow: true,
+						totalFlow: totalFlow,
+						duration: duration,
+						customer_code: currentReading.customer_code,
+						created_at: currentReading.created_at,
+					};
+					result.push(changeRow);
+				}
+
+				currentStorageBlock = [];
+			}
+		}
+
+		return result;
+	}, [readings]);
+
+	const handleDelete = (id: number, isChangeRow: boolean = false) => {
+		if (isChangeRow) {
+			// Jika yang dihapus adalah baris "CHANGE", kita perlu menghapus seluruh blok data sebelumnya.
+			const changeRowIndex = processedReadings.findIndex(
+				(row) => row.id === id
+			);
+			if (changeRowIndex > 0) {
+				const lastDataRowIndex = changeRowIndex - 1;
+				let firstDataRowIndex = lastDataRowIndex;
+				while (
+					firstDataRowIndex > 0 &&
+					!("isChangeRow" in processedReadings[firstDataRowIndex - 1])
+				) {
+					firstDataRowIndex--;
+				}
+
+				const idsToDelete = processedReadings
+					.slice(firstDataRowIndex, changeRowIndex)
+					.map((row) => row.id as number);
+
+				idsToDelete.forEach((idToDelete) => deleteReading(idToDelete));
+			}
+		} else {
+			// Jika yang dihapus adalah baris data biasa.
+			deleteReading(id);
+		}
 	};
 
 	const handleExport = async () => {
@@ -497,7 +580,7 @@ export function AdminDataManagement() {
 													<Loader2 className="h-6 w-6 animate-spin mx-auto" />
 												</TableCell>
 											</TableRow>
-										) : readings.length === 0 ? (
+										) : processedReadings.length === 0 ? (
 											<TableRow>
 												<TableCell
 													colSpan={13}
@@ -507,29 +590,64 @@ export function AdminDataManagement() {
 												</TableCell>
 											</TableRow>
 										) : (
-											readings.map(
-												(row: ReadingWithFlowMeter) => {
+											processedReadings.map((row) => {
+												if (
+													"isChangeRow" in row &&
+													row.isChangeRow
+												) {
+													return (
+														<TableRow
+															key={row.id}
+															className="bg-yellow-100 hover:bg-yellow-200 font-bold">
+															<TableCell>
+																CHANGE
+															</TableCell>
+															<TableCell
+																colSpan={2}>
+																Durasi:{" "}
+																{row.duration}
+															</TableCell>
+															<TableCell
+																colSpan={
+																	6
+																}></TableCell>
+															<TableCell>
+																{row.totalFlow}
+															</TableCell>
+															<TableCell
+																colSpan={
+																	3
+																}></TableCell>
+														</TableRow>
+													);
+												} else if (
+													!("isChangeRow" in row)
+												) {
+													// row is ReadingWithFlowMeter
+													const reading =
+														row as ReadingWithFlowMeter;
 													const { date, time } =
 														formatDateTimeForDisplay(
-															row.created_at
+															reading.created_at
 														);
 													return (
-														<TableRow key={row.id}>
+														<TableRow
+															key={reading.id}>
 															<TableCell>
 																<Badge variant="outline">
 																	{
-																		row.customer_code
+																		reading.customer_code
 																	}
 																</Badge>
 															</TableCell>
 															<TableCell className="font-semibold">
 																{
-																	row.fixed_storage_quantity
+																	reading.fixed_storage_quantity
 																}
 															</TableCell>
 															<TableCell>
 																{
-																	row.storage_number
+																	reading.storage_number
 																}
 															</TableCell>
 															<TableCell>
@@ -540,35 +658,38 @@ export function AdminDataManagement() {
 															</TableCell>
 															<TableCell>
 																{String(
-																	row.psi
+																	reading.psi
 																)}
 															</TableCell>
 															<TableCell>
 																{String(
-																	row.temp
+																	reading.temp
 																)}
 																°C
 															</TableCell>
 															<TableCell>
 																{String(
-																	row.psi_out
+																	reading.psi_out
 																)}
 															</TableCell>
 															<TableCell>
 																{String(
-																	row.flow_turbine
+																	reading.flow_turbine
 																)}
 															</TableCell>
 															<TableCell>
-																{row.flowMeter}
+																{
+																	reading.flowMeter
+																}
 															</TableCell>
 															<TableCell>
-																{row.profiles
+																{reading
+																	.profiles
 																	?.username ||
 																	"N/A"}
 															</TableCell>
 															<TableCell>
-																{row.remarks ||
+																{reading.remarks ||
 																	"-"}
 															</TableCell>
 															<TableCell>
@@ -576,7 +697,7 @@ export function AdminDataManagement() {
 																	open={
 																		isEditDialogOpen &&
 																		selectedReading?.id ===
-																			row.id
+																			reading.id
 																	}
 																	onOpenChange={
 																		setIsEditDialogOpen
@@ -601,7 +722,7 @@ export function AdminDataManagement() {
 																					<DropdownMenuItem
 																						onClick={() =>
 																							setSelectedReading(
-																								row
+																								reading
 																							)
 																						}>
 																						<Edit className="mr-2 h-4 w-4" />
@@ -645,7 +766,12 @@ export function AdminDataManagement() {
 																				<AlertDialogAction
 																					onClick={() =>
 																						handleDelete(
-																							row.id
+																							typeof reading.id ===
+																								"number"
+																								? reading.id
+																								: parseInt(
+																										reading.id as string
+																								  )
 																						)
 																					}>
 																					Ya,
@@ -683,7 +809,8 @@ export function AdminDataManagement() {
 														</TableRow>
 													);
 												}
-											)
+												return null;
+											})
 										)}
 									</TableBody>
 								</Table>
