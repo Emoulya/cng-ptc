@@ -65,7 +65,7 @@ export function OperatorDashboard() {
 						</div>
 						<div>
 							<h1 className="text-xl font-bold tracking-tight">
-								PTC Monitoring
+								Defueling Monitoring
 							</h1>
 							<p className="text-blue-100 text-sm font-medium">
 								Operator: {user?.username}
@@ -144,8 +144,7 @@ export function OperatorDashboard() {
 							</Button>
 						</div>
 
-						{/* Conditional Content */}
-						{showDataEntry && (
+						<div hidden={!showDataEntry}>
 							<Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm overflow-hidden">
 								<CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
 									<CardTitle className="text-lg flex items-center gap-2 text-gray-800">
@@ -160,9 +159,9 @@ export function OperatorDashboard() {
 									/>
 								</CardContent>
 							</Card>
-						)}
+						</div>
 
-						{showDataTable && (
+						<div hidden={!showDataTable}>
 							<Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm overflow-hidden">
 								<CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
 									<CardTitle className="text-lg flex items-center gap-2 text-gray-800">
@@ -176,7 +175,7 @@ export function OperatorDashboard() {
 									/>
 								</CardContent>
 							</Card>
-						)}
+						</div>
 					</>
 				)}
 			</div>
