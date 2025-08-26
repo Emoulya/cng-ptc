@@ -40,13 +40,22 @@ export function DataTable({ customerCode }: DataTableProps) {
 
 			currentStorageBlock.push(currentReading);
 
+			// Cek jika ini adalah bacaan terakhir ATAU storage berikutnya berbeda
 			if (
 				!nextReading ||
 				nextReading.storage_number !== currentReading.storage_number
 			) {
+				// Tambahkan semua data dari blok saat ini ke hasil
 				result.push(...currentStorageBlock);
 
-				if (currentStorageBlock.length > 1) {
+				// HANYA tambahkan baris CHANGE jika ADA PERUBAHAN storage
+				// dan blok saat ini memiliki lebih dari satu entri
+				if (
+					nextReading && // Pastikan ada data berikutnya
+					nextReading.storage_number !==
+						currentReading.storage_number &&
+					currentStorageBlock.length > 1
+				) {
 					const totalFlow = currentStorageBlock.reduce((sum, r) => {
 						const flow = Number(r.flowMeter);
 						return sum + (isNaN(flow) ? 0 : flow);
@@ -77,6 +86,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 					};
 					result.push(changeRow);
 				}
+
 				currentStorageBlock = [];
 			}
 		}
@@ -86,8 +96,6 @@ export function DataTable({ customerCode }: DataTableProps) {
 
 	const formatDateTime = (timestamp: string) => {
 		const date = new Date(timestamp);
-
-		// Format tanggal seperti biasa
 		const formattedDate = date.toLocaleDateString("id-ID", {
 			year: "numeric",
 			month: "2-digit",
@@ -208,7 +216,6 @@ export function DataTable({ customerCode }: DataTableProps) {
 										</TableRow>
 									);
 								} else {
-									// row is ReadingWithFlowMeter
 									const reading = row as ReadingWithFlowMeter;
 									const { date, time } = formatDateTime(
 										reading.created_at

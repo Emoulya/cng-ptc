@@ -172,33 +172,42 @@ export function AdminDataManagement() {
 
 			currentStorageBlock.push(currentReading);
 
+			// Cek jika ini adalah bacaan terakhir ATAU storage berikutnya berbeda
 			if (
 				!nextReading ||
 				nextReading.storage_number !== currentReading.storage_number
 			) {
+				// Tambahkan semua data dari blok saat ini ke hasil
 				result.push(...currentStorageBlock);
 
-				const totalFlow = currentStorageBlock.reduce((sum, r) => {
-					const flow = Number(r.flowMeter);
-					return sum + (isNaN(flow) ? 0 : flow);
-				}, 0);
+				// HANYA tambahkan baris CHANGE jika ADA PERUBAHAN storage
+				// dan blok saat ini memiliki lebih dari satu entri
+				if (
+					nextReading && // Pastikan ada data berikutnya
+					nextReading.storage_number !==
+						currentReading.storage_number &&
+					currentStorageBlock.length > 1
+				) {
+					const totalFlow = currentStorageBlock.reduce((sum, r) => {
+						const flow = Number(r.flowMeter);
+						return sum + (isNaN(flow) ? 0 : flow);
+					}, 0);
 
-				const startTime = new Date(currentStorageBlock[0].created_at);
-				const endTime = new Date(
-					currentStorageBlock[
-						currentStorageBlock.length - 1
-					].created_at
-				);
-				const diffMs = endTime.getTime() - startTime.getTime();
-				const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-				const diffMins = Math.floor(
-					(diffMs % (1000 * 60 * 60)) / (1000 * 60)
-				);
-				const duration = `${diffHours} jam ${diffMins} menit`;
+					const startTime = new Date(
+						currentStorageBlock[0].created_at
+					);
+					const endTime = new Date(
+						currentStorageBlock[
+							currentStorageBlock.length - 1
+						].created_at
+					);
+					const diffMs = endTime.getTime() - startTime.getTime();
+					const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+					const diffMins = Math.floor(
+						(diffMs % (1000 * 60 * 60)) / (1000 * 60)
+					);
+					const duration = `${diffHours} jam ${diffMins} menit`;
 
-				// Hanya buat baris "CHANGE" jika ada lebih dari satu entri data
-				if (currentStorageBlock.length > 1) {
-					// Buat dan tambahkan baris "CHANGE"
 					const changeRow: ChangeSummaryRow = {
 						id: `change-${currentReading.id}`,
 						isChangeRow: true,
@@ -219,7 +228,6 @@ export function AdminDataManagement() {
 
 	const handleDelete = (id: number, isChangeRow: boolean = false) => {
 		if (isChangeRow) {
-			// Jika yang dihapus adalah baris "CHANGE", kita perlu menghapus seluruh blok data sebelumnya.
 			const changeRowIndex = processedReadings.findIndex(
 				(row) => row.id === id
 			);
@@ -232,11 +240,9 @@ export function AdminDataManagement() {
 				) {
 					firstDataRowIndex--;
 				}
-
 				const idsToDelete = processedReadings
 					.slice(firstDataRowIndex, changeRowIndex)
 					.map((row) => row.id as number);
-
 				idsToDelete.forEach((idToDelete) => deleteReading(idToDelete));
 			}
 		} else {
