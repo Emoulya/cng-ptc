@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
 	Table,
 	TableBody,
@@ -10,7 +11,11 @@ import {
 } from "@/components/ui/table";
 import { useReadingsByCustomer } from "@/hooks/use-readings";
 import { Loader2, Database, Calendar, Clock } from "lucide-react";
-import type { ReadingWithFlowMeter } from "@/types/data";
+import type {
+	ReadingWithFlowMeter,
+	TableRowData,
+	ChangeSummaryRow,
+} from "@/types/data";
 
 interface DataTableProps {
 	customerCode: string;
@@ -23,6 +28,62 @@ export function DataTable({ customerCode }: DataTableProps) {
 		isError,
 	} = useReadingsByCustomer(customerCode);
 
+	const processedReadings = useMemo(() => {
+		if (!readings || readings.length === 0) return [];
+
+		const result: TableRowData[] = [];
+		let currentStorageBlock: ReadingWithFlowMeter[] = [];
+
+		for (let i = 0; i < readings.length; i++) {
+			const currentReading = readings[i];
+			const nextReading = readings[i + 1];
+
+			currentStorageBlock.push(currentReading);
+
+			if (
+				!nextReading ||
+				nextReading.storage_number !== currentReading.storage_number
+			) {
+				result.push(...currentStorageBlock);
+
+				if (currentStorageBlock.length > 1) {
+					const totalFlow = currentStorageBlock.reduce((sum, r) => {
+						const flow = Number(r.flowMeter);
+						return sum + (isNaN(flow) ? 0 : flow);
+					}, 0);
+
+					const startTime = new Date(
+						currentStorageBlock[0].created_at
+					);
+					const endTime = new Date(
+						currentStorageBlock[
+							currentStorageBlock.length - 1
+						].created_at
+					);
+					const diffMs = endTime.getTime() - startTime.getTime();
+					const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+					const diffMins = Math.floor(
+						(diffMs % (1000 * 60 * 60)) / (1000 * 60)
+					);
+					const duration = `${diffHours} jam ${diffMins} menit`;
+
+					const changeRow: ChangeSummaryRow = {
+						id: `change-${currentReading.id}`,
+						isChangeRow: true,
+						totalFlow: totalFlow,
+						duration: duration,
+						customer_code: currentReading.customer_code,
+						created_at: currentReading.created_at,
+					};
+					result.push(changeRow);
+				}
+				currentStorageBlock = [];
+			}
+		}
+
+		return result;
+	}, [readings]);
+
 	const formatDateTime = (timestamp: string) => {
 		const date = new Date(timestamp);
 
@@ -32,14 +93,12 @@ export function DataTable({ customerCode }: DataTableProps) {
 			month: "2-digit",
 			day: "2-digit",
 		});
-
 		const formattedTime = date.toLocaleTimeString("id-ID", {
 			hour: "2-digit",
 			minute: "2-digit",
 			second: "2-digit",
 			timeZone: "UTC",
 		});
-
 		return { date: formattedDate, time: formattedTime };
 	};
 
@@ -116,7 +175,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 									Gagal memuat data.
 								</TableCell>
 							</TableRow>
-						) : readings.length === 0 ? (
+						) : processedReadings.length === 0 ? (
 							<TableRow>
 								<TableCell
 									colSpan={10}
@@ -131,24 +190,42 @@ export function DataTable({ customerCode }: DataTableProps) {
 								</TableCell>
 							</TableRow>
 						) : (
-							readings.map(
-								(row: ReadingWithFlowMeter, index: number) => {
-									const { date, time } = formatDateTime(
-										row.created_at
-									);
+							processedReadings.map((row, index) => {
+								if ("isChangeRow" in row && row.isChangeRow) {
 									return (
 										<TableRow
 											key={row.id}
+											className="bg-yellow-100 hover:bg-yellow-200 font-bold">
+											<TableCell>CHANGE</TableCell>
+											<TableCell colSpan={2}>
+												Durasi: {row.duration}
+											</TableCell>
+											<TableCell colSpan={5}></TableCell>
+											<TableCell>
+												{row.totalFlow}
+											</TableCell>
+											<TableCell></TableCell>
+										</TableRow>
+									);
+								} else {
+									// row is ReadingWithFlowMeter
+									const reading = row as ReadingWithFlowMeter;
+									const { date, time } = formatDateTime(
+										reading.created_at
+									);
+									return (
+										<TableRow
+											key={reading.id}
 											className={`hover:bg-blue-50/50 transition-colors duration-200 ${
 												index % 2 === 0
 													? "bg-white/50"
 													: "bg-gray-50/30"
 											}`}>
 											<TableCell className="border-r border-gray-100 font-semibold text-green-700">
-												{row.fixed_storage_quantity}
+												{reading.fixed_storage_quantity}
 											</TableCell>
 											<TableCell className="border-r border-gray-100 font-mono font-medium">
-												{row.storage_number}
+												{reading.storage_number}
 											</TableCell>
 											<TableCell className="font-mono text-sm font-medium border-r border-gray-100 bg-blue-50/30">
 												{date}
@@ -157,28 +234,28 @@ export function DataTable({ customerCode }: DataTableProps) {
 												{time}
 											</TableCell>
 											<TableCell className="border-r border-gray-100 font-mono font-semibold text-red-600">
-												{String(row.psi)}
+												{String(reading.psi)}
 											</TableCell>
 											<TableCell className="border-r border-gray-100 font-mono font-semibold text-orange-600">
-												{String(row.temp)}°C
+												{String(reading.temp)}°C
 											</TableCell>
 											<TableCell className="border-r border-gray-100 font-mono font-semibold text-indigo-600">
-												{String(row.psi_out)}
+												{String(reading.psi_out)}
 											</TableCell>
 											<TableCell className="border-r border-gray-100 font-mono font-semibold text-cyan-600">
-												{String(row.flow_turbine)}
+												{String(reading.flow_turbine)}
 											</TableCell>
 											<TableCell className="font-mono border-r border-gray-100 bg-gray-50/50">
-												{row.flowMeter}
+												{reading.flowMeter}
 											</TableCell>
 											<TableCell className="text-sm max-w-[150px]">
 												<div
 													className={`${
-														row.remarks
+														reading.remarks
 															? "bg-yellow-50 border border-yellow-200 rounded px-2 py-1"
 															: ""
 													}`}>
-													{row.remarks || (
+													{reading.remarks || (
 														<span className="text-gray-400 italic">
 															Tidak ada keterangan
 														</span>
@@ -188,7 +265,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 										</TableRow>
 									);
 								}
-							)
+							})
 						)}
 					</TableBody>
 				</Table>
