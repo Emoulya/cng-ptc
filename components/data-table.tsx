@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
 	Table,
 	TableBody,
@@ -9,13 +9,22 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
 import { useReadingsByCustomer } from "@/hooks/use-readings";
-import { Loader2, Database, Calendar, Clock } from "lucide-react";
+import { Loader2, Database, Calendar, Clock, Pencil } from "lucide-react";
 import type {
 	ReadingWithFlowMeter,
 	TableRowData,
 	ChangeSummaryRow,
 } from "@/types/data";
+import { EditReadingForm } from "./edit-reading-form";
 
 interface DataTableProps {
 	customerCode: string;
@@ -27,6 +36,10 @@ export function DataTable({ customerCode }: DataTableProps) {
 		isLoading,
 		isError,
 	} = useReadingsByCustomer(customerCode);
+
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+	const [selectedReading, setSelectedReading] =
+		useState<ReadingWithFlowMeter | null>(null);
 
 	const processedReadings = useMemo(() => {
 		if (!readings || readings.length === 0) return [];
@@ -109,6 +122,12 @@ export function DataTable({ customerCode }: DataTableProps) {
 		return { date: formattedDate, time: formattedTime };
 	};
 
+	// Handler untuk membuka dialog
+	const handleEditClick = (reading: ReadingWithFlowMeter) => {
+		setSelectedReading(reading);
+		setIsEditDialogOpen(true);
+	};
+
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
@@ -163,6 +182,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 							<TableHead className="font-semibold text-gray-700 min-w-[120px]">
 								Keterangan
 							</TableHead>
+							<TableHead>Aksi</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -268,6 +288,20 @@ export function DataTable({ customerCode }: DataTableProps) {
 													)}
 												</div>
 											</TableCell>
+											<TableCell>
+												{reading.is_editable && (
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() =>
+															handleEditClick(
+																reading
+															)
+														}>
+														<Pencil className="h-4 w-4" />
+													</Button>
+												)}
+											</TableCell>
 										</TableRow>
 									);
 								}
@@ -276,6 +310,25 @@ export function DataTable({ customerCode }: DataTableProps) {
 					</TableBody>
 				</Table>
 			</div>
+
+			<Dialog
+				open={isEditDialogOpen}
+				onOpenChange={setIsEditDialogOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Edit Data Reading</DialogTitle>
+					</DialogHeader>
+					{selectedReading && (
+						<EditReadingForm
+							reading={selectedReading}
+							onSuccess={() => {
+								setIsEditDialogOpen(false);
+								setSelectedReading(null);
+							}}
+						/>
+					)}
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

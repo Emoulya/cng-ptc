@@ -45,6 +45,7 @@ export interface UpdateReading {
 // Tipe data setelah flow_meter dihitung di client
 export interface ReadingWithFlowMeter extends ReadingFromDB {
 	flowMeter: number | string;
+	is_editable: boolean;
 }
 
 // Tipe data untuk baris "CHANGE"
