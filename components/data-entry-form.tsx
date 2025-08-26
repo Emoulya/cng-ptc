@@ -69,16 +69,22 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		setSelectedStorage(null);
 	}, [customerCode]);
 
-	// Efek untuk auto-fill jumlah storage jika tipenya 'fixed'
 	useEffect(() => {
-		if (selectedStorage?.type === "fixed") {
-			setFormData((prev) => ({
-				...prev,
-				fixedStorageQuantity:
-					selectedStorage.default_quantity?.toString() || "",
-			}));
+		if (selectedStorage) {
+			if (selectedStorage.type === "fixed") {
+				setFormData((prev) => ({
+					...prev,
+					fixedStorageQuantity:
+						selectedStorage.default_quantity?.toString() || "",
+				}));
+			} else if (selectedStorage.type === "mobile") {
+				// Atur otomatis jumlah storage menjadi 1 untuk tipe mobile
+				setFormData((prev) => ({
+					...prev,
+					fixedStorageQuantity: "1",
+				}));
+			}
 		} else {
-			// Kosongkan lagi jika user beralih dari fixed ke mobile
 			setFormData((prev) => ({ ...prev, fixedStorageQuantity: "" }));
 		}
 	}, [selectedStorage]);
@@ -208,37 +214,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 						</SelectContent>
 					</Select>
 				</div>
-
-				{/* Conditional Fixed Storage Quantity */}
-				{selectedStorage && selectedStorage.type === "mobile" && (
-					<div className="space-y-3">
-						<Label
-							htmlFor="fixedStorageQuantity"
-							className="text-base font-semibold text-gray-700 flex items-center gap-2">
-							<Boxes className="h-4 w-4 text-green-600" />
-							Jumlah Storage (Mobile){" "}
-							<span className="text-red-500">*</span>
-						</Label>
-						<Select
-							value={formData.fixedStorageQuantity}
-							onValueChange={(value) =>
-								handleInputChange("fixedStorageQuantity", value)
-							}>
-							<SelectTrigger className="h-12">
-								<SelectValue placeholder="Pilih jumlah..." />
-							</SelectTrigger>
-							<SelectContent>
-								{[1, 2, 3, 4, 5].map((num) => (
-									<SelectItem
-										key={num}
-										value={num.toString()}>
-										{num}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-				)}
 
 				{/* Input Waktu */}
 				<div className="space-y-3">
