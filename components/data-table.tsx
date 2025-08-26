@@ -62,12 +62,12 @@ export function DataTable({ customerCode }: DataTableProps) {
 					}, 0);
 
 					const startTime = new Date(
-						currentStorageBlock[0].created_at
+						currentStorageBlock[0].recorded_at
 					);
 					const endTime = new Date(
 						currentStorageBlock[
 							currentStorageBlock.length - 1
-						].created_at
+						].recorded_at
 					);
 					const diffMs = endTime.getTime() - startTime.getTime();
 					const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -82,11 +82,10 @@ export function DataTable({ customerCode }: DataTableProps) {
 						totalFlow: totalFlow,
 						duration: duration,
 						customer_code: currentReading.customer_code,
-						created_at: currentReading.created_at,
+						recorded_at: currentReading.recorded_at,
 					};
 					result.push(changeRow);
 				}
-
 				currentStorageBlock = [];
 			}
 		}
@@ -96,6 +95,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 
 	const formatDateTime = (timestamp: string) => {
 		const date = new Date(timestamp);
+
 		const formattedDate = date.toLocaleDateString("id-ID", {
 			year: "numeric",
 			month: "2-digit",
@@ -105,7 +105,6 @@ export function DataTable({ customerCode }: DataTableProps) {
 			hour: "2-digit",
 			minute: "2-digit",
 			second: "2-digit",
-			timeZone: "UTC",
 		});
 		return { date: formattedDate, time: formattedTime };
 	};
@@ -218,7 +217,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 								} else {
 									const reading = row as ReadingWithFlowMeter;
 									const { date, time } = formatDateTime(
-										reading.created_at
+										reading.recorded_at
 									);
 									return (
 										<TableRow

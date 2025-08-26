@@ -29,6 +29,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkOperations } from "@/components/bulk-operations";
 import {
+	HoverCard,
+	HoverCardContent,
+	HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
 	Search,
 	Download,
 	Loader2,
@@ -40,6 +45,7 @@ import {
 	MoreHorizontal,
 	Edit,
 	Trash2,
+	Clock,
 } from "lucide-react";
 import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
 import { useCustomers } from "@/hooks/use-customers";
@@ -76,7 +82,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EditReadingForm } from "./edit-reading-form";
 
-// --- Hook custom untuk debounce ---
 function useDebounce<T>(value: T, delay: number): T {
 	const [debouncedValue, setDebouncedValue] = useState<T>(value);
 	useEffect(() => {
@@ -91,17 +96,13 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function AdminDataManagement() {
-	// State untuk filter UI
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedCustomer, setSelectedCustomer] = useState("all");
 	const [selectedOperator, setSelectedOperator] = useState("all");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 	const [isExporting, setIsExporting] = useState(false);
-
-	// Debounce search term untuk mencegah API call berlebihan saat mengetik
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-	// Gabungkan semua filter menjadi satu objek untuk dikirim ke hook
 	const filters = useMemo(
 		() => ({
 			customer: selectedCustomer,
@@ -135,7 +136,7 @@ export function AdminDataManagement() {
 		);
 		const today = new Date().toDateString();
 		const readingsToday = allReadingsForStats.filter(
-			(r) => new Date(r.created_at).toDateString() === today
+			(r) => new Date(r.recorded_at).toDateString() === today
 		).length;
 		return {
 			uniqueCustomers: Array.from(customersSet),
@@ -152,12 +153,21 @@ export function AdminDataManagement() {
 				month: "2-digit",
 				year: "numeric",
 			}),
+			// --- PERUBAHAN DI SINI ---
+			// Menghapus `timeZone: "UTC"` agar waktu ditampilkan di zona waktu lokal browser
 			time: date.toLocaleTimeString("id-ID", {
 				hour: "2-digit",
 				minute: "2-digit",
-				timeZone: "UTC",
 			}),
 		};
+	};
+
+	const formatTimestampForHover = (timestamp: string) => {
+		return new Date(timestamp).toLocaleString("id-ID", {
+			timeZone: "Asia/Jakarta",
+			dateStyle: "full",
+			timeStyle: "long",
+		});
 	};
 
 	const processedReadings = useMemo(() => {
@@ -172,18 +182,14 @@ export function AdminDataManagement() {
 
 			currentStorageBlock.push(currentReading);
 
-			// Cek jika ini adalah bacaan terakhir ATAU storage berikutnya berbeda
 			if (
 				!nextReading ||
 				nextReading.storage_number !== currentReading.storage_number
 			) {
-				// Tambahkan semua data dari blok saat ini ke hasil
 				result.push(...currentStorageBlock);
 
-				// HANYA tambahkan baris CHANGE jika ADA PERUBAHAN storage
-				// dan blok saat ini memiliki lebih dari satu entri
 				if (
-					nextReading && // Pastikan ada data berikutnya
+					nextReading &&
 					nextReading.storage_number !==
 						currentReading.storage_number &&
 					currentStorageBlock.length > 1
@@ -194,12 +200,12 @@ export function AdminDataManagement() {
 					}, 0);
 
 					const startTime = new Date(
-						currentStorageBlock[0].created_at
+						currentStorageBlock[0].recorded_at
 					);
 					const endTime = new Date(
 						currentStorageBlock[
 							currentStorageBlock.length - 1
-						].created_at
+						].recorded_at
 					);
 					const diffMs = endTime.getTime() - startTime.getTime();
 					const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -214,11 +220,10 @@ export function AdminDataManagement() {
 						totalFlow: totalFlow,
 						duration: duration,
 						customer_code: currentReading.customer_code,
-						created_at: currentReading.created_at,
+						recorded_at: currentReading.recorded_at,
 					};
 					result.push(changeRow);
 				}
-
 				currentStorageBlock = [];
 			}
 		}
@@ -226,29 +231,8 @@ export function AdminDataManagement() {
 		return result;
 	}, [readings]);
 
-	const handleDelete = (id: number, isChangeRow: boolean = false) => {
-		if (isChangeRow) {
-			const changeRowIndex = processedReadings.findIndex(
-				(row) => row.id === id
-			);
-			if (changeRowIndex > 0) {
-				const lastDataRowIndex = changeRowIndex - 1;
-				let firstDataRowIndex = lastDataRowIndex;
-				while (
-					firstDataRowIndex > 0 &&
-					!("isChangeRow" in processedReadings[firstDataRowIndex - 1])
-				) {
-					firstDataRowIndex--;
-				}
-				const idsToDelete = processedReadings
-					.slice(firstDataRowIndex, changeRowIndex)
-					.map((row) => row.id as number);
-				idsToDelete.forEach((idToDelete) => deleteReading(idToDelete));
-			}
-		} else {
-			// Jika yang dihapus adalah baris data biasa.
-			deleteReading(id);
-		}
+	const handleDelete = (id: number) => {
+		deleteReading(id);
 	};
 
 	const handleExport = async () => {
@@ -264,7 +248,6 @@ export function AdminDataManagement() {
 			}
 			const arrayBuffer = await response.arrayBuffer();
 			const workbook = XLSX.read(arrayBuffer, { type: "buffer" });
-
 			const customersToExport = Array.from(
 				new Set(readings.map((r) => r.customer_code))
 			);
@@ -276,14 +259,12 @@ export function AdminDataManagement() {
 
 			customersToExport.forEach((customerCode) => {
 				const newSheet = JSON.parse(JSON.stringify(templateWorksheet));
-
 				const customerInfo = customers.find(
 					(c) => c.code === customerCode
 				);
 				const customerName = customerInfo?.name || customerCode;
 				const cellAddress = "I5";
-				const cell = { t: "s", v: `PT. ${customerName}` };
-				newSheet[cellAddress] = cell;
+				newSheet[cellAddress] = { t: "s", v: `PT. ${customerName}` };
 				if (!newSheet["!merges"]) newSheet["!merges"] = [];
 				newSheet["!merges"].push({
 					s: { r: 4, c: 8 },
@@ -295,10 +276,10 @@ export function AdminDataManagement() {
 				);
 
 				const dataForSheet = customerData.map((row) => {
-					const d = new Date(row.created_at);
+					const d = new Date(row.recorded_at);
 					const timezoneOffset = d.getTimezoneOffset() * 60000;
 					const correctedDate = new Date(
-						d.getTime() + timezoneOffset
+						d.getTime() - timezoneOffset
 					);
 
 					const storageAsNumber = isNaN(parseInt(row.storage_number))
@@ -331,7 +312,6 @@ export function AdminDataManagement() {
 
 				XLSX.utils.sheet_add_aoa(newSheet, dataForSheet, {
 					origin: "A10",
-					cellDates: true,
 				});
 
 				customerData.forEach((_, rowIndex) => {
@@ -344,20 +324,7 @@ export function AdminDataManagement() {
 					if (newSheet[timeCellAddress]) {
 						newSheet[timeCellAddress].z = "hh:mm";
 					}
-					const cellN = `N${currentRow}`;
-					if (newSheet[cellN]) {
-						newSheet[cellN].z = "#,##0;[Red]-#,##0";
-					}
-					const cellO = `O${currentRow}`;
-					if (newSheet[cellO]) {
-						newSheet[cellO].z = "#,##0;[Red]-#,##0";
-					}
-					const cellP = `P${currentRow}`;
-					if (newSheet[cellP]) {
-						newSheet[cellP].z = "0.00%";
-					}
 				});
-
 				XLSX.utils.book_append_sheet(workbook, newSheet, customerCode);
 			});
 
@@ -511,7 +478,6 @@ export function AdminDataManagement() {
 										))}
 									</SelectContent>
 								</Select>
-
 								<Select
 									value={sortOrder}
 									onValueChange={(value: "asc" | "desc") =>
@@ -532,7 +498,6 @@ export function AdminDataManagement() {
 										</SelectItem>
 									</SelectContent>
 								</Select>
-
 								<Button
 									variant="outline"
 									className="flex items-center gap-2 bg-transparent"
@@ -626,15 +591,12 @@ export function AdminDataManagement() {
 																}></TableCell>
 														</TableRow>
 													);
-												} else if (
-													!("isChangeRow" in row)
-												) {
-													// row is ReadingWithFlowMeter
+												} else {
 													const reading =
 														row as ReadingWithFlowMeter;
 													const { date, time } =
 														formatDateTimeForDisplay(
-															reading.created_at
+															reading.recorded_at
 														);
 													return (
 														<TableRow
@@ -660,7 +622,43 @@ export function AdminDataManagement() {
 																{date}
 															</TableCell>
 															<TableCell>
-																{time}
+																<HoverCard>
+																	<HoverCardTrigger
+																		asChild>
+																		<span className="cursor-pointer underline decoration-dotted">
+																			{
+																				time
+																			}
+																		</span>
+																	</HoverCardTrigger>
+																	<HoverCardContent className="w-80">
+																		<div className="flex justify-between space-x-4">
+																			<Clock className="h-6 w-6 mt-1" />
+																			<div className="space-y-1">
+																				<h4 className="text-sm font-semibold">
+																					Waktu
+																					Submit
+																					Aktual
+																				</h4>
+																				<p className="text-sm">
+																					Data
+																					ini
+																					dicatat
+																					oleh
+																					sistem
+																					pada:
+																				</p>
+																				<div className="flex items-center pt-2">
+																					<span className="text-xs text-muted-foreground">
+																						{formatTimestampForHover(
+																							reading.created_at
+																						)}
+																					</span>
+																				</div>
+																			</div>
+																		</div>
+																	</HoverCardContent>
+																</HoverCard>
 															</TableCell>
 															<TableCell>
 																{String(
@@ -772,12 +770,7 @@ export function AdminDataManagement() {
 																				<AlertDialogAction
 																					onClick={() =>
 																						handleDelete(
-																							typeof reading.id ===
-																								"number"
-																								? reading.id
-																								: parseInt(
-																										reading.id as string
-																								  )
+																							reading.id
 																						)
 																					}>
 																					Ya,
@@ -815,7 +808,6 @@ export function AdminDataManagement() {
 														</TableRow>
 													);
 												}
-												return null;
 											})
 										)}
 									</TableBody>
@@ -824,7 +816,6 @@ export function AdminDataManagement() {
 						</CardContent>
 					</Card>
 				</TabsContent>
-
 				<TabsContent value="bulk">
 					<BulkOperations />
 				</TabsContent>

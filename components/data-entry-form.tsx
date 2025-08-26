@@ -64,6 +64,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		null
 	);
 
+	// Logika untuk konfirmasi perubahan storage
 	const lastSubmittedStorage = useRef<string | null>(null);
 	const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 	const [confirmAction, setConfirmAction] = useState<(() => void) | null>(
@@ -161,25 +162,31 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 
 		// Fungsi untuk memproses dan mengirim data
 		const processAndSubmit = () => {
-			const localDate = new Date();
+			// --- LOGIKA PEMBULATAN WAKTU YANG BARU ---
+			const localDate = new Date(); // Ambil tanggal aktual
 			const [hourStr, minuteStr] = formData.recordingTime.split(":");
-			let inputHour = parseInt(hourStr, 10);
-			if (parseInt(minuteStr, 10) >= 30) {
-				inputHour += 1;
+			let hour = parseInt(hourStr, 10);
+			const minute = parseInt(minuteStr, 10);
+
+			// Aturan: jika menit ke-45 atau lebih, bulatkan ke jam berikutnya
+			if (minute >= 45) {
+				hour += 1;
 			}
-			const utcDate = new Date(
-				Date.UTC(
-					localDate.getFullYear(),
-					localDate.getMonth(),
-					localDate.getDate(),
-					inputHour,
-					0,
-					0
-				)
+
+			// Buat objek tanggal baru dengan jam yang sudah dibulatkan, dan set menit ke 00
+			const recordedDate = new Date(
+				localDate.getFullYear(),
+				localDate.getMonth(),
+				localDate.getDate(),
+				hour, // Gunakan jam yang sudah disesuaikan
+				0, // Set menit ke 0
+				0 // Set detik ke 0
 			);
 
+			const finalTimestamp = recordedDate.toISOString();
+
 			const submissionData = {
-				created_at: utcDate.toISOString(),
+				recorded_at: finalTimestamp,
 				customer_code: customerCode,
 				operator_id: user.id,
 				storage_number: formData.storageNumber,
@@ -191,16 +198,15 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				remarks: formData.remarks,
 			};
 
-			// Update storage terakhir yang akan disubmit
 			lastSubmittedStorage.current = submissionData.storage_number;
 			addReading(submissionData);
 		};
 
+		// Cek apakah perlu konfirmasi perubahan storage
 		if (
 			lastSubmittedStorage.current &&
 			formData.storageNumber !== lastSubmittedStorage.current
 		) {
-			// Simpan aksi submit untuk dijalankan setelah konfirmasi
 			setConfirmAction(() => processAndSubmit);
 			setIsConfirmDialogOpen(true);
 		} else {
@@ -214,6 +220,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				onSubmit={handleSubmit}
 				className="space-y-6">
 				<div className="grid gap-6">
+					{/* Storage Selection */}
 					<div className="space-y-3">
 						<Label
 							htmlFor="storage"
@@ -253,6 +260,8 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 							</SelectContent>
 						</Select>
 					</div>
+
+					{/* Input Waktu */}
 					<div className="space-y-3">
 						<Label
 							htmlFor="recordingTime"
@@ -275,10 +284,14 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 							required
 						/>
 						<p className="text-xs text-gray-500">
-							Waktu akan dibulatkan otomatis oleh sistem.
+							Waktu akan dibulatkan ke jam terdekat (xx:45 ke
+							atas).
 						</p>
 					</div>
+
+					{/* Measurement Fields Grid */}
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						{/* PSI */}
 						<div className="space-y-3">
 							<Label
 								htmlFor="psi"
@@ -298,6 +311,8 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 								className="h-12 text-base border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-red-300 focus:border-red-500 transition-all duration-200"
 							/>
 						</div>
+
+						{/* Temperature */}
 						<div className="space-y-3">
 							<Label
 								htmlFor="temp"
@@ -318,6 +333,8 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 								className="h-12 text-base border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-orange-300 focus:border-orange-500 transition-all duration-200"
 							/>
 						</div>
+
+						{/* PSI Out */}
 						<div className="space-y-3">
 							<Label
 								htmlFor="psiOut"
@@ -337,6 +354,8 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 								className="h-12 text-base border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-indigo-300 focus:border-indigo-500 transition-all duration-200"
 							/>
 						</div>
+
+						{/* Flow Turbine */}
 						<div className="space-y-3">
 							<Label
 								htmlFor="flowTurbine"
@@ -361,6 +380,8 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 							/>
 						</div>
 					</div>
+
+					{/* Remarks */}
 					<div className="space-y-3">
 						<Label
 							htmlFor="remarks"
@@ -378,6 +399,8 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 							className="text-base min-h-[100px] border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-gray-300 focus:border-gray-500 transition-all duration-200 resize-none"
 						/>
 					</div>
+
+					{/* Submit Button */}
 					<Button
 						type="submit"
 						className="w-full h-14 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"

@@ -50,9 +50,8 @@ export const getReadingsByCustomer = async (
 };
 
 export const addReading = async (reading: NewReading): Promise<void> => {
-	// Panggil fungsi RPC 'add_reading_with_backfill'
 	const { error } = await supabase.rpc("add_reading_with_backfill", {
-		p_created_at: reading.created_at,
+		p_recorded_at: reading.recorded_at,
 		p_customer_code: reading.customer_code,
 		p_operator_id: reading.operator_id,
 		p_storage_number: reading.storage_number,
@@ -76,7 +75,7 @@ export const updateReading = async (reading: UpdateReading): Promise<void> => {
 		.update({
 			storage_number: reading.storage_number,
 			fixed_storage_quantity: reading.fixed_storage_quantity,
-			created_at: reading.created_at,
+			recorded_at: reading.recorded_at,
 			psi: reading.psi,
 			temp: reading.temp,
 			psi_out: reading.psi_out,

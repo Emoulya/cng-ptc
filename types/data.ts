@@ -2,6 +2,7 @@
 export interface ReadingFromDB {
 	id: number;
 	created_at: string;
+	recorded_at: string;
 	customer_code: string;
 	storage_number: string;
 	fixed_storage_quantity: number;
@@ -17,7 +18,7 @@ export interface ReadingFromDB {
 
 // Tipe data saat mengirim data BARU
 export interface NewReading {
-	created_at: string;
+	recorded_at: string;
 	customer_code: string;
 	storage_number: string;
 	operator_id: string;
@@ -34,7 +35,7 @@ export interface UpdateReading {
 	id: number;
 	storage_number?: string;
 	fixed_storage_quantity?: number;
-	created_at?: string;
+	recorded_at?: string;
 	psi?: number;
 	temp?: number;
 	psi_out?: number;
@@ -53,7 +54,7 @@ export interface ChangeSummaryRow {
 	totalFlow: number;
 	duration: string;
 	customer_code: string;
-	created_at: string;
+	recorded_at: string;
 }
 
 // Tipe gabungan untuk tabel
