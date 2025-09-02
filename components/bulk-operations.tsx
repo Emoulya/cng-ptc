@@ -81,9 +81,14 @@ export function BulkOperations() {
 
 			queryClient.invalidateQueries({ queryKey: ["readings"] });
 			setSelectedItems([]);
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const message =
+				error instanceof Error
+					? error.message
+					: "Terjadi kesalahan tak terduga.";
+
 			toast.error("Gagal Menghapus Semua Data", {
-				description: error.message,
+				description: message,
 			});
 		} finally {
 			setIsDeletingAll(false);

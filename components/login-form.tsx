@@ -31,10 +31,14 @@ export function LoginForm() {
 			toast.success("Login Successful", {
 				description: "Redirecting to your dashboard...",
 			});
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const message =
+				error instanceof Error
+					? error.message
+					: "Please check your email and password.";
+
 			toast.error("Login Failed", {
-				description:
-					error.message || "Please check your email and password.",
+				description: message,
 			});
 		} finally {
 			setIsLoading(false);

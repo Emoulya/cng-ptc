@@ -382,8 +382,8 @@ export function AdminDataManagement() {
 
 						if (nextReading) {
 							const totalFlow = manualBlock.reduce(
-								(sum, r) =>
-									sum + (Number((r as any).flowMeter) || 0),
+								(sum, r: { flowMeter: number | string }) =>
+									sum + (Number(r.flowMeter) || 0),
 								0
 							);
 							const startTime = new Date(
