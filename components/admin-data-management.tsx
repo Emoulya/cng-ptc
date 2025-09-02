@@ -1,3 +1,4 @@
+// components\admin-data-management.tsx
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -49,11 +50,11 @@ import {
 } from "lucide-react";
 import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
 import { useCustomers } from "@/hooks/use-customers";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import type {
 	ReadingWithFlowMeter,
 	TableRowData,
-	ChangeSummaryRow,
+	DumpingTotalRow,
 } from "@/types/data";
 import { toast } from "sonner";
 import {
@@ -145,21 +146,23 @@ export function AdminDataManagement() {
 		};
 	}, [allReadingsForStats]);
 
-	const formatDateTimeForDisplay = (timestamp: string) => {
+	const formatDateTime = (timestamp: string) => {
 		const date = new Date(timestamp);
-		return {
-			date: date.toLocaleDateString("id-ID", {
-				day: "2-digit",
-				month: "2-digit",
-				year: "numeric",
-			}),
-			// --- PERUBAHAN DI SINI ---
-			// Menghapus `timeZone: "UTC"` agar waktu ditampilkan di zona waktu lokal browser
-			time: date.toLocaleTimeString("id-ID", {
-				hour: "2-digit",
-				minute: "2-digit",
-			}),
-		};
+		const formattedDate = date.toLocaleDateString("id-ID", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		});
+		const formattedTime = date.toLocaleTimeString("id-ID", {
+			hour: "2-digit",
+			minute: "2-digit",
+		});
+		return { date: formattedDate, time: formattedTime };
+	};
+
+	const handleEditClick = (reading: ReadingWithFlowMeter) => {
+		setSelectedReading(reading);
+		setIsEditDialogOpen(true);
 	};
 
 	const formatTimestampForHover = (timestamp: string) => {
@@ -173,61 +176,144 @@ export function AdminDataManagement() {
 	const processedReadings = useMemo(() => {
 		if (!readings || readings.length === 0) return [];
 
-		const result: TableRowData[] = [];
-		let currentStorageBlock: ReadingWithFlowMeter[] = [];
-
-		for (let i = 0; i < readings.length; i++) {
-			const currentReading = readings[i];
-			const nextReading = readings[i + 1];
-
-			currentStorageBlock.push(currentReading);
+		const readingsWithFlowMeter = readings.map((current, index, arr) => {
+			let flowMeter: number | string = "-";
+			const previous = arr[index - 1];
 
 			if (
-				!nextReading ||
-				nextReading.storage_number !== currentReading.storage_number
+				previous &&
+				current.storage_number === previous.storage_number &&
+				current.operation_type === previous.operation_type
 			) {
-				result.push(...currentStorageBlock);
+				const diff =
+					Number(current.flow_turbine) -
+					Number(previous.flow_turbine);
+				flowMeter = isNaN(diff) || diff < 0 ? "-" : diff;
+			}
 
-				if (
-					nextReading &&
-					nextReading.storage_number !==
-						currentReading.storage_number &&
-					currentStorageBlock.length > 1
+			return { ...current, flowMeter };
+		});
+
+		const result: TableRowData[] = [];
+		let i = 0;
+		while (i < readingsWithFlowMeter.length) {
+			const startReading = readingsWithFlowMeter[i];
+
+			if (startReading.operation_type === "manual") {
+				let endIndex = i;
+				while (
+					endIndex + 1 < readingsWithFlowMeter.length &&
+					readingsWithFlowMeter[endIndex + 1].storage_number ===
+						startReading.storage_number &&
+					readingsWithFlowMeter[endIndex + 1].operation_type ===
+						"manual"
 				) {
-					const totalFlow = currentStorageBlock.reduce((sum, r) => {
-						const flow = Number(r.flowMeter);
-						return sum + (isNaN(flow) ? 0 : flow);
-					}, 0);
-
-					const startTime = new Date(
-						currentStorageBlock[0].recorded_at
-					);
-					const endTime = new Date(
-						currentStorageBlock[
-							currentStorageBlock.length - 1
-						].recorded_at
-					);
-					const diffMs = endTime.getTime() - startTime.getTime();
-					const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-					const diffMins = Math.floor(
-						(diffMs % (1000 * 60 * 60)) / (1000 * 60)
-					);
-					const duration = `${diffHours} jam ${diffMins} menit`;
-
-					const changeRow: ChangeSummaryRow = {
-						id: `change-${currentReading.id}`,
-						isChangeRow: true,
-						totalFlow: totalFlow,
-						duration: duration,
-						customer_code: currentReading.customer_code,
-						recorded_at: currentReading.recorded_at,
-					};
-					result.push(changeRow);
+					endIndex++;
 				}
-				currentStorageBlock = [];
+
+				const manualBlock = readingsWithFlowMeter.slice(
+					i,
+					endIndex + 1
+				);
+				result.push(...manualBlock);
+
+				const lastReadingInBlock = manualBlock[manualBlock.length - 1];
+				const nextReading = readingsWithFlowMeter[endIndex + 1];
+
+				if (nextReading) {
+					const totalFlow = manualBlock.reduce(
+						(sum, r) => sum + (Number(r.flowMeter) || 0),
+						0
+					);
+					const startTime = new Date(manualBlock[0].recorded_at);
+					const endTime = new Date(lastReadingInBlock.recorded_at);
+
+					if (nextReading.operation_type === "dumping") {
+						const endTimeStr = endTime.toLocaleTimeString("id-ID", {
+							hour: "2-digit",
+							minute: "2-digit",
+						});
+						result.push({
+							id: `total-before-dump-${lastReadingInBlock.id}`,
+							isDumpingTotalRow: true,
+							totalFlow,
+							duration: endTimeStr,
+							customer_code: lastReadingInBlock.customer_code,
+							recorded_at: lastReadingInBlock.recorded_at,
+							storage_number: lastReadingInBlock.storage_number,
+						});
+					} else if (
+						nextReading.customer_code ===
+							lastReadingInBlock.customer_code &&
+						nextReading.storage_number !==
+							lastReadingInBlock.storage_number
+					) {
+						const diffMs = endTime.getTime() - startTime.getTime();
+						const diffMinutes = Math.floor(diffMs / 60000);
+						const pad = (num: number) =>
+							String(num).padStart(2, "0");
+						const durationStr = `${pad(
+							Math.floor(diffMinutes / 60)
+						)}:${pad(diffMinutes % 60)}`;
+
+						result.push({
+							id: `change-${lastReadingInBlock.id}`,
+							isChangeRow: true,
+							totalFlow,
+							duration: durationStr,
+							customer_code: lastReadingInBlock.customer_code,
+							recorded_at: lastReadingInBlock.recorded_at,
+						});
+					}
+				}
+				i = endIndex + 1;
+			} else if (startReading.operation_type === "dumping") {
+				let endIndex = i;
+				while (
+					endIndex + 1 < readingsWithFlowMeter.length &&
+					readingsWithFlowMeter[endIndex + 1].operation_type ===
+						"dumping"
+				) {
+					endIndex++;
+				}
+
+				const dumpingSourceBlock = readingsWithFlowMeter.slice(
+					i,
+					endIndex + 1
+				);
+				result.push(...dumpingSourceBlock);
+
+				const overallStartTime = new Date(
+					dumpingSourceBlock[0].recorded_at
+				);
+				const overallEndTime = new Date(
+					dumpingSourceBlock[
+						dumpingSourceBlock.length - 1
+					].recorded_at
+				);
+				const diffMs =
+					overallEndTime.getTime() - overallStartTime.getTime();
+				const diffMinutes = Math.floor(diffMs / 60000);
+				const pad = (num: number) => String(num).padStart(2, "0");
+				const duration = `${pad(Math.floor(diffMinutes / 60))}:${pad(
+					diffMinutes % 60
+				)}`;
+
+				result.push({
+					id: `dumping-summary-${startReading.id}`,
+					isDumpingSummary: true,
+					totalFlow: 0,
+					duration,
+					customer_code: startReading.customer_code,
+					recorded_at: overallEndTime.toISOString(),
+				});
+
+				i = endIndex + 1;
+			} else {
+				result.push(startReading);
+				i++;
 			}
 		}
-
 		return result;
 	}, [readings]);
 
@@ -243,88 +329,435 @@ export function AdminDataManagement() {
 		setIsExporting(true);
 		try {
 			const response = await fetch("/template-laporan.xlsm");
-			if (!response.ok) {
-				throw new Error("Gagal memuat file template.");
-			}
+			if (!response.ok) throw new Error("Gagal memuat file template.");
 			const arrayBuffer = await response.arrayBuffer();
 			const workbook = XLSX.read(arrayBuffer, { type: "buffer" });
+
 			const customersToExport = Array.from(
-				new Set(readings.map((r) => r.customer_code))
+				new Set(readings.map((r) => r.customer_code).filter(Boolean))
 			);
 			const templateSheetName = "sheet1";
-			const templateWorksheet = workbook.Sheets[templateSheetName];
-			if (!templateWorksheet) {
-				throw new Error("Sheet 'sheet1' tidak ditemukan.");
-			}
 
 			customersToExport.forEach((customerCode) => {
+				const templateWorksheet = workbook.Sheets[templateSheetName];
+				if (!templateWorksheet)
+					throw new Error("Sheet 'sheet1' tidak ditemukan.");
+
 				const newSheet = JSON.parse(JSON.stringify(templateWorksheet));
+
 				const customerInfo = customers.find(
 					(c) => c.code === customerCode
 				);
 				const customerName = customerInfo?.name || customerCode;
-				const cellAddress = "I5";
-				newSheet[cellAddress] = { t: "s", v: `PT. ${customerName}` };
-				if (!newSheet["!merges"]) newSheet["!merges"] = [];
-				newSheet["!merges"].push({
-					s: { r: 4, c: 8 },
-					e: { r: 5, c: 10 },
-				});
+				newSheet["I5"] = { t: "s", v: `PT. ${customerName}` };
+				newSheet["E3"] = { t: "s", v: `PT. ${customerName}` };
 
-				const customerData = readings.filter(
+				// --- LOGIKA PEMROSESAN DATA ---
+				const customerRawData = readings.filter(
 					(row) => row.customer_code === customerCode
 				);
+				const customerProcessedData = [];
+				let i = 0;
+				while (i < customerRawData.length) {
+					const startReading = customerRawData[i];
+					if (startReading.operation_type === "manual") {
+						let endIndex = i;
+						while (
+							endIndex + 1 < customerRawData.length &&
+							customerRawData[endIndex + 1].storage_number ===
+								startReading.storage_number &&
+							customerRawData[endIndex + 1].operation_type ===
+								"manual"
+						) {
+							endIndex++;
+						}
+						const manualBlock = customerRawData.slice(
+							i,
+							endIndex + 1
+						);
+						customerProcessedData.push(...manualBlock);
+						const lastReadingInBlock =
+							manualBlock[manualBlock.length - 1];
+						const nextReading = customerRawData[endIndex + 1];
 
-				const dataForSheet = customerData.map((row) => {
-					const d = new Date(row.recorded_at);
-					const timezoneOffset = d.getTimezoneOffset() * 60000;
-					const correctedDate = new Date(
-						d.getTime() - timezoneOffset
-					);
+						if (nextReading) {
+							const totalFlow = manualBlock.reduce(
+								(sum, r) =>
+									sum + (Number((r as any).flowMeter) || 0),
+								0
+							);
+							const startTime = new Date(
+								manualBlock[0].recorded_at
+							);
+							const endTime = new Date(
+								lastReadingInBlock.recorded_at
+							);
 
-					const storageAsNumber = isNaN(parseInt(row.storage_number))
-						? row.storage_number
-						: parseInt(row.storage_number);
+							if (nextReading.operation_type === "dumping") {
+								const endTimeStr = endTime.toLocaleTimeString(
+									"id-ID",
+									{
+										hour: "2-digit",
+										minute: "2-digit",
+									}
+								);
+								customerProcessedData.push({
+									id: `total-before-dump-${lastReadingInBlock.id}`,
+									isDumpingTotalRow: true,
+									totalFlow,
+									duration: endTimeStr,
+									customer_code:
+										lastReadingInBlock.customer_code,
+									recorded_at: lastReadingInBlock.recorded_at,
+									storage_number:
+										lastReadingInBlock.storage_number,
+								});
+							} else if (
+								nextReading.storage_number !==
+								lastReadingInBlock.storage_number
+							) {
+								const diffMs =
+									endTime.getTime() - startTime.getTime();
+								const diffMinutes = Math.floor(diffMs / 60000);
+								const pad = (num: number) =>
+									String(num).padStart(2, "0");
+								const durationStr = `${pad(
+									Math.floor(diffMinutes / 60)
+								)}:${pad(diffMinutes % 60)}`;
+								customerProcessedData.push({
+									id: `change-${lastReadingInBlock.id}`,
+									isChangeRow: true,
+									totalFlow,
+									duration: durationStr,
+									customer_code:
+										lastReadingInBlock.customer_code,
+									recorded_at: lastReadingInBlock.recorded_at,
+								});
+							}
+						}
+						i = endIndex + 1;
+					} else if (startReading.operation_type === "dumping") {
+						let endIndex = i;
+						while (
+							endIndex + 1 < customerRawData.length &&
+							customerRawData[endIndex + 1].operation_type ===
+								"dumping"
+						) {
+							endIndex++;
+						}
+						const dumpingSourceBlock = customerRawData.slice(
+							i,
+							endIndex + 1
+						);
+						customerProcessedData.push(...dumpingSourceBlock);
+						const overallStartTime = new Date(
+							dumpingSourceBlock[0].recorded_at
+						);
+						const overallEndTime = new Date(
+							dumpingSourceBlock[
+								dumpingSourceBlock.length - 1
+							].recorded_at
+						);
+						const diffMs =
+							overallEndTime.getTime() -
+							overallStartTime.getTime();
+						const diffMinutes = Math.floor(diffMs / 60000);
+						const pad = (num: number) =>
+							String(num).padStart(2, "0");
+						const duration = `${pad(
+							Math.floor(diffMinutes / 60)
+						)}:${pad(diffMinutes % 60)}`;
+						customerProcessedData.push({
+							id: `dumping-summary-${startReading.id}`,
+							isDumpingSummary: true,
+							totalFlow: 0,
+							duration,
+							customer_code: startReading.customer_code,
+							recorded_at: overallEndTime.toISOString(),
+						});
+						i = endIndex + 1;
+					} else {
+						customerProcessedData.push(startReading);
+						i++;
+					}
+				}
+				// --- END LOGIKA PEMROSESAN ---
 
-					const flowMeterValue =
-						row.flowMeter === "" ? "" : Number(row.flowMeter);
+				let lastSpecialRowIndex = 9;
 
-					return [
-						null,
-						null,
-						null,
-						null,
-						Number(row.fixed_storage_quantity),
-						storageAsNumber,
-						correctedDate,
-						correctedDate,
-						Number(row.psi),
-						Number(row.temp),
-						Number(row.psi_out),
-						Number(row.flow_turbine),
-						flowMeterValue,
-						null,
-						null,
-						null,
-						row.remarks,
-					];
-				});
+				const dataForSheet = customerProcessedData.map(
+					(row, rowIndex) => {
+						const currentRow = 10 + rowIndex;
+						let formulaForO = "";
 
-				XLSX.utils.sheet_add_aoa(newSheet, dataForSheet, {
+						if (
+							("isChangeRow" in row && row.isChangeRow) ||
+							"isDumpingTotalRow" in row
+						) {
+							const startRow = lastSpecialRowIndex + 1;
+							const endRow = currentRow - 1;
+
+							formulaForO = `=IFERROR(IF(OR(E${currentRow}=$A$6,E${currentRow}=$A$5),N${startRow}-N${endRow},IF(N${currentRow}="","",IF(N${endRow}="","",N${endRow}-N${currentRow}))),"-")`;
+
+							lastSpecialRowIndex = currentRow;
+						} else {
+							const prevRow = currentRow - 1;
+							formulaForO = `=IFERROR(IF(OR(E${currentRow}=$A$6,E${currentRow}=$A$5),0,IF(N${currentRow}="","",IF(N${prevRow}="","",N${prevRow}-N${currentRow}))),"-")`;
+						}
+
+						if ("isChangeRow" in row && row.isChangeRow) {
+							return {
+								E: "CHANGE",
+								H: row.duration,
+								M: Math.round(Number(row.totalFlow)),
+								O: { t: "n", f: formulaForO },
+							};
+						}
+						if ("isDumpingTotalRow" in row) {
+							const summary = row as DumpingTotalRow;
+							return {
+								E: "TOTAL",
+								F: summary.storage_number,
+								H: summary.duration,
+								M: Math.round(Number(summary.totalFlow)),
+								O: { t: "n", f: formulaForO },
+							};
+						}
+						if ("isDumpingSummary" in row) {
+							return {
+								E: 1,
+								H: row.duration,
+								N: { t: "s", v: "" },
+							};
+						}
+
+						const reading = row as ReadingWithFlowMeter;
+						const d = new Date(reading.recorded_at);
+						const timeStr = d.toLocaleTimeString("id-ID", {
+							hour: "2-digit",
+							minute: "2-digit",
+						});
+
+						const storageAsNumber = isNaN(
+							parseInt(reading.storage_number)
+						)
+							? reading.storage_number
+							: parseInt(reading.storage_number);
+
+						return {
+							E: Number(reading.fixed_storage_quantity),
+							F: storageAsNumber,
+							G: d,
+							H: { t: "s", v: timeStr },
+							I: Number(reading.psi),
+							J: Number(reading.temp),
+							K: Number(reading.psi_out),
+							L: Number(reading.flow_turbine),
+							M:
+								reading.flowMeter !== undefined &&
+								reading.flowMeter !== null
+									? Number(reading.flowMeter)
+									: "-",
+							O: { t: "n", f: formulaForO },
+							Q: reading.remarks,
+						};
+					}
+				);
+
+				XLSX.utils.sheet_add_json(newSheet, dataForSheet, {
 					origin: "A10",
+					header: [
+						"A",
+						"B",
+						"C",
+						"D",
+						"E",
+						"F",
+						"G",
+						"H",
+						"I",
+						"J",
+						"K",
+						"L",
+						"M",
+						"N",
+						"O",
+						"P",
+						"Q",
+					],
+					skipHeader: true,
 				});
 
-				customerData.forEach((_, rowIndex) => {
-					const currentRow = 10 + rowIndex;
-					const dateCellAddress = `G${currentRow}`;
-					if (newSheet[dateCellAddress]) {
-						newSheet[dateCellAddress].z = "dd/mm/yyyy";
-					}
-					const timeCellAddress = `H${currentRow}`;
-					if (newSheet[timeCellAddress]) {
-						newSheet[timeCellAddress].z = "hh:mm";
-					}
+				// --- MODIFIKASI STYLE DI SINI ---
+				const baseStyle = {
+					border: {
+						top: { style: "thin", color: { rgb: "000000" } },
+						bottom: { style: "thin", color: { rgb: "000000" } },
+						left: { style: "thin", color: { rgb: "000000" } },
+						right: { style: "thin", color: { rgb: "000000" } },
+					},
+					alignment: {
+						vertical: "center",
+						horizontal: "center",
+					},
+				};
+				const headerStyle = {
+					...baseStyle,
+					alignment: { ...baseStyle.alignment, wrapText: true },
+				};
+				const blueFill = { fill: { fgColor: { rgb: "00b0f0" } } };
+				const yellowFill = { fill: { fgColor: { rgb: "ffff00" } } };
+				const tableCols = [
+					"E",
+					"F",
+					"G",
+					"H",
+					"I",
+					"J",
+					"K",
+					"L",
+					"M",
+					"N",
+					"O",
+					"P",
+					"Q",
+				];
+
+				const topMergedCols = [
+					"E",
+					"F",
+					"G",
+					"H",
+					"I",
+					"J",
+					"K",
+					"L",
+					"M",
+					"N",
+					"O",
+					"P",
+					"Q",
+				];
+				const centerAlignment = {
+					alignment: { vertical: "center", horizontal: "center" },
+				};
+				[3, 4].forEach((rowNum) => {
+					topMergedCols.forEach((col) => {
+						const cellAddr = `${col}${rowNum}`;
+						const cell = newSheet[cellAddr];
+						if (cell) {
+							cell.s = { ...(cell.s || {}), ...centerAlignment };
+						}
+					});
 				});
+
+				const topInfoCols = ["I", "J", "K", "L", "M", "N"];
+				[5, 6].forEach((rowNum) => {
+					topInfoCols.forEach((col) => {
+						const cellAddr = `${col}${rowNum}`;
+						const cell = newSheet[cellAddr];
+						if (!cell) {
+							newSheet[cellAddr] = { t: "s", v: "" };
+						}
+
+						// Terapkan style dasar
+						newSheet[cellAddr].s = {
+							...(newSheet[cellAddr].s || {}),
+							...baseStyle,
+						};
+
+						if (
+							rowNum === 6 &&
+							cell &&
+							(cell.t === "n" || cell.f)
+						) {
+							if (col === "K") {
+								newSheet[cellAddr].s.numFmt = "0";
+							} else if (col === "L") {
+								newSheet[cellAddr].s.numFmt = "#,##0.00";
+							} else if (col === "M") {
+								newSheet[cellAddr].s.numFmt = "0%";
+							}
+						}
+					});
+				});
+
+				[8, 9].forEach((rowNum) => {
+					tableCols.forEach((col) => {
+						const cellAddr = `${col}${rowNum}`;
+						if (!newSheet[cellAddr]) {
+							newSheet[cellAddr] = { t: "s", v: "" };
+						}
+						newSheet[cellAddr].s = {
+							...(newSheet[cellAddr].s || {}),
+							...headerStyle,
+						};
+					});
+				});
+
+				customerProcessedData.forEach((row, rowIndex) => {
+					const currentRow = 10 + rowIndex;
+					let rowStyle = { ...baseStyle };
+
+					if (
+						"isDumpingTotalRow" in row ||
+						"isDumpingSummary" in row
+					) {
+						rowStyle = { ...rowStyle, ...blueFill };
+					} else if ("isChangeRow" in row) {
+						rowStyle = { ...rowStyle, ...yellowFill };
+					}
+
+					tableCols.forEach((col) => {
+						const cellAddr = `${col}${currentRow}`;
+						if (!newSheet[cellAddr]) {
+							newSheet[cellAddr] = { t: "s", v: "" };
+						}
+						const cell = newSheet[cellAddr];
+
+						cell.s = { ...(cell.s || {}), ...rowStyle };
+
+						if (cell.t === "n" || cell.f) {
+							if (col === "N" || col === "O") {
+								cell.s.numFmt = "#,##0";
+							} else if (col === "P") {
+								cell.s.numFmt = "0%";
+							}
+						}
+					});
+				});
+
+				const colsToCheck = [
+					"E",
+					"F",
+					"G",
+					"H",
+					"I",
+					"J",
+					"K",
+					"L",
+					"M",
+					"N",
+					"O",
+					"P",
+					"Q",
+				];
+				newSheet["!cols"] = colsToCheck.map((col) => {
+					let maxLen = 10;
+					for (
+						let rowIndex = 10;
+						rowIndex < 10 + customerProcessedData.length;
+						rowIndex++
+					) {
+						const cellAddr = `${col}${rowIndex}`;
+						const cell = newSheet[cellAddr];
+						if (cell && cell.v) {
+							maxLen = Math.max(maxLen, cell.v.toString().length);
+						}
+					}
+					return { wch: maxLen + 2 };
+				});
+
 				XLSX.utils.book_append_sheet(workbook, newSheet, customerCode);
 			});
 
@@ -525,6 +958,7 @@ export function AdminDataManagement() {
 						<CardContent>
 							<div className="overflow-x-auto">
 								<Table>
+									{/* --- BAGIAN HEADER TABEL TIDAK BERUBAH --- */}
 									<TableHeader>
 										<TableRow>
 											<TableHead>Customer</TableHead>
@@ -561,6 +995,7 @@ export function AdminDataManagement() {
 												</TableCell>
 											</TableRow>
 										) : (
+											// --- LOGIKA RENDERING BARU DARI data-table.tsx DITERAPKAN DI SINI ---
 											processedReadings.map((row) => {
 												if (
 													"isChangeRow" in row &&
@@ -569,21 +1004,32 @@ export function AdminDataManagement() {
 													return (
 														<TableRow
 															key={row.id}
-															className="bg-yellow-100 hover:bg-yellow-200 font-bold">
+															className="bg-yellow-100 hover:bg-yellow-200 font-bold text-yellow-900">
 															<TableCell>
 																CHANGE
 															</TableCell>
 															<TableCell
-																colSpan={2}>
-																Durasi:{" "}
+																colSpan={
+																	2
+																}></TableCell>
+															<TableCell>
+																{
+																	formatDateTime(
+																		row.recorded_at
+																	).date
+																}
+															</TableCell>
+															<TableCell>
 																{row.duration}
 															</TableCell>
 															<TableCell
 																colSpan={
-																	6
+																	4
 																}></TableCell>
 															<TableCell>
-																{row.totalFlow}
+																{Math.round(
+																	row.totalFlow
+																)}
 															</TableCell>
 															<TableCell
 																colSpan={
@@ -591,223 +1037,285 @@ export function AdminDataManagement() {
 																}></TableCell>
 														</TableRow>
 													);
-												} else {
-													const reading =
-														row as ReadingWithFlowMeter;
-													const { date, time } =
-														formatDateTimeForDisplay(
-															reading.recorded_at
-														);
+												}
+												if (
+													"isDumpingTotalRow" in row
+												) {
+													const summary =
+														row as DumpingTotalRow;
 													return (
 														<TableRow
-															key={reading.id}>
+															key={summary.id}
+															className="bg-blue-200 hover:bg-blue-300 font-bold text-blue-900">
 															<TableCell>
-																<Badge variant="outline">
-																	{
-																		reading.customer_code
-																	}
-																</Badge>
+																TOTAL
 															</TableCell>
-															<TableCell className="font-semibold">
+															<TableCell></TableCell>
+															<TableCell>
 																{
-																	reading.fixed_storage_quantity
+																	summary.storage_number
 																}
 															</TableCell>
 															<TableCell>
 																{
-																	reading.storage_number
+																	formatDateTime(
+																		summary.recorded_at
+																	).date
 																}
-															</TableCell>
-															<TableCell>
-																{date}
-															</TableCell>
-															<TableCell>
-																<HoverCard>
-																	<HoverCardTrigger
-																		asChild>
-																		<span className="cursor-pointer underline decoration-dotted">
-																			{
-																				time
-																			}
-																		</span>
-																	</HoverCardTrigger>
-																	<HoverCardContent className="w-80">
-																		<div className="flex justify-between space-x-4">
-																			<Clock className="h-6 w-6 mt-1" />
-																			<div className="space-y-1">
-																				<h4 className="text-sm font-semibold">
-																					Waktu
-																					Submit
-																					Aktual
-																				</h4>
-																				<p className="text-sm">
-																					Data
-																					ini
-																					dicatat
-																					oleh
-																					sistem
-																					pada:
-																				</p>
-																				<div className="flex items-center pt-2">
-																					<span className="text-xs text-muted-foreground">
-																						{formatTimestampForHover(
-																							reading.created_at
-																						)}
-																					</span>
-																				</div>
-																			</div>
-																		</div>
-																	</HoverCardContent>
-																</HoverCard>
-															</TableCell>
-															<TableCell>
-																{String(
-																	reading.psi
-																)}
-															</TableCell>
-															<TableCell>
-																{String(
-																	reading.temp
-																)}
-																°C
-															</TableCell>
-															<TableCell>
-																{String(
-																	reading.psi_out
-																)}
-															</TableCell>
-															<TableCell>
-																{String(
-																	reading.flow_turbine
-																)}
 															</TableCell>
 															<TableCell>
 																{
-																	reading.flowMeter
+																	summary.duration
 																}
 															</TableCell>
+															<TableCell
+																colSpan={
+																	4
+																}></TableCell>
 															<TableCell>
-																{reading
-																	.profiles
-																	?.username ||
-																	"N/A"}
+																{Math.round(
+																	summary.totalFlow
+																)}
 															</TableCell>
-															<TableCell>
-																{reading.remarks ||
-																	"-"}
-															</TableCell>
-															<TableCell>
-																<Dialog
-																	open={
-																		isEditDialogOpen &&
-																		selectedReading?.id ===
-																			reading.id
-																	}
-																	onOpenChange={
-																		setIsEditDialogOpen
-																	}>
-																	<AlertDialog>
-																		<DropdownMenu>
-																			<DropdownMenuTrigger
-																				asChild>
-																				<Button
-																					variant="ghost"
-																					className="h-8 w-8 p-0">
-																					<span className="sr-only">
-																						Open
-																						menu
-																					</span>
-																					<MoreHorizontal className="h-4 w-4" />
-																				</Button>
-																			</DropdownMenuTrigger>
-																			<DropdownMenuContent align="end">
-																				<DialogTrigger
-																					asChild>
-																					<DropdownMenuItem
-																						onClick={() =>
-																							setSelectedReading(
-																								reading
-																							)
-																						}>
-																						<Edit className="mr-2 h-4 w-4" />
-																						<span>
-																							Edit
-																						</span>
-																					</DropdownMenuItem>
-																				</DialogTrigger>
-																				<AlertDialogTrigger
-																					asChild>
-																					<DropdownMenuItem>
-																						<Trash2 className="mr-2 h-4 w-4" />
-																						<span>
-																							Hapus
-																						</span>
-																					</DropdownMenuItem>
-																				</AlertDialogTrigger>
-																			</DropdownMenuContent>
-																		</DropdownMenu>
-																		<AlertDialogContent>
-																			<AlertDialogHeader>
-																				<AlertDialogTitle>
-																					Apakah
-																					Anda
-																					yakin?
-																				</AlertDialogTitle>
-																				<AlertDialogDescription>
-																					Tindakan
-																					ini
-																					akan
-																					menghapus
-																					data
-																					secara
-																					permanen.
-																				</AlertDialogDescription>
-																			</AlertDialogHeader>
-																			<AlertDialogFooter>
-																				<AlertDialogCancel>
-																					Batal
-																				</AlertDialogCancel>
-																				<AlertDialogAction
-																					onClick={() =>
-																						handleDelete(
-																							reading.id
-																						)
-																					}>
-																					Ya,
-																					Hapus
-																				</AlertDialogAction>
-																			</AlertDialogFooter>
-																		</AlertDialogContent>
-																	</AlertDialog>
-																	<DialogContent>
-																		<DialogHeader>
-																			<DialogTitle>
-																				Edit
-																				Data
-																				Reading
-																			</DialogTitle>
-																		</DialogHeader>
-																		{selectedReading && (
-																			<EditReadingForm
-																				reading={
-																					selectedReading
-																				}
-																				onSuccess={() => {
-																					setIsEditDialogOpen(
-																						false
-																					);
-																					setSelectedReading(
-																						null
-																					);
-																				}}
-																			/>
-																		)}
-																	</DialogContent>
-																</Dialog>
-															</TableCell>
+															<TableCell
+																colSpan={
+																	3
+																}></TableCell>
 														</TableRow>
 													);
 												}
+												if (
+													"isDumpingSummary" in row &&
+													row.isDumpingSummary
+												) {
+													return (
+														<TableRow
+															key={row.id}
+															className="bg-blue-200 hover:bg-blue-300 font-bold text-blue-900">
+															<TableCell
+																colSpan={
+																	4
+																}></TableCell>
+															<TableCell>
+																{row.duration}
+															</TableCell>
+															<TableCell
+																colSpan={
+																	8
+																}></TableCell>
+														</TableRow>
+													);
+												}
+
+												const reading =
+													row as ReadingWithFlowMeter;
+												const { date, time } =
+													formatDateTime(
+														reading.recorded_at
+													);
+												return (
+													<TableRow key={reading.id}>
+														<TableCell>
+															<Badge variant="outline">
+																{
+																	reading.customer_code
+																}
+															</Badge>
+														</TableCell>
+														<TableCell className="font-semibold">
+															{
+																reading.fixed_storage_quantity
+															}
+														</TableCell>
+														<TableCell>
+															{
+																reading.storage_number
+															}
+														</TableCell>
+														<TableCell>
+															{date}
+														</TableCell>
+														<TableCell>
+															<HoverCard>
+																<HoverCardTrigger
+																	asChild>
+																	<span className="cursor-pointer underline decoration-dotted">
+																		{time}
+																	</span>
+																</HoverCardTrigger>
+																<HoverCardContent className="w-80">
+																	<div className="flex justify-between space-x-4">
+																		<Clock className="h-6 w-6 mt-1" />
+																		<div className="space-y-1">
+																			<h4 className="text-sm font-semibold">
+																				Waktu
+																				Submit
+																				Aktual
+																			</h4>
+																			<p className="text-sm">
+																				Data
+																				ini
+																				dicatat
+																				oleh
+																				sistem
+																				pada:
+																			</p>
+																			<div className="flex items-center pt-2">
+																				<span className="text-xs text-muted-foreground">
+																					{formatTimestampForHover(
+																						reading.created_at
+																					)}
+																				</span>
+																			</div>
+																		</div>
+																	</div>
+																</HoverCardContent>
+															</HoverCard>
+														</TableCell>
+														<TableCell>
+															{String(
+																reading.psi
+															)}
+														</TableCell>
+														<TableCell>
+															{String(
+																reading.temp
+															)}
+															°C
+														</TableCell>
+														<TableCell>
+															{String(
+																reading.psi_out
+															)}
+														</TableCell>
+														<TableCell>
+															{String(
+																reading.flow_turbine
+															)}
+														</TableCell>
+														<TableCell>
+															{reading.flowMeter}
+														</TableCell>
+														<TableCell>
+															{reading.profiles
+																?.username ||
+																"N/A"}
+														</TableCell>
+														<TableCell>
+															{reading.remarks ||
+																"-"}
+														</TableCell>
+														<TableCell>
+															<Dialog
+																open={
+																	isEditDialogOpen &&
+																	selectedReading?.id ===
+																		reading.id
+																}
+																onOpenChange={
+																	setIsEditDialogOpen
+																}>
+																<AlertDialog>
+																	<DropdownMenu>
+																		<DropdownMenuTrigger
+																			asChild>
+																			<Button
+																				variant="ghost"
+																				className="h-8 w-8 p-0">
+																				<span className="sr-only">
+																					Open
+																					menu
+																				</span>
+																				<MoreHorizontal className="h-4 w-4" />
+																			</Button>
+																		</DropdownMenuTrigger>
+																		<DropdownMenuContent align="end">
+																			<DialogTrigger
+																				asChild>
+																				<DropdownMenuItem
+																					onClick={() =>
+																						handleEditClick(
+																							reading
+																						)
+																					}>
+																					<Edit className="mr-2 h-4 w-4" />
+																					<span>
+																						Edit
+																					</span>
+																				</DropdownMenuItem>
+																			</DialogTrigger>
+																			<AlertDialogTrigger
+																				asChild>
+																				<DropdownMenuItem>
+																					<Trash2 className="mr-2 h-4 w-4" />
+																					<span>
+																						Hapus
+																					</span>
+																				</DropdownMenuItem>
+																			</AlertDialogTrigger>
+																		</DropdownMenuContent>
+																	</DropdownMenu>
+																	<AlertDialogContent>
+																		<AlertDialogHeader>
+																			<AlertDialogTitle>
+																				Apakah
+																				Anda
+																				yakin?
+																			</AlertDialogTitle>
+																			<AlertDialogDescription>
+																				Tindakan
+																				ini
+																				akan
+																				menghapus
+																				data
+																				secara
+																				permanen.
+																			</AlertDialogDescription>
+																		</AlertDialogHeader>
+																		<AlertDialogFooter>
+																			<AlertDialogCancel>
+																				Batal
+																			</AlertDialogCancel>
+																			<AlertDialogAction
+																				onClick={() =>
+																					handleDelete(
+																						reading.id
+																					)
+																				}>
+																				Ya,
+																				Hapus
+																			</AlertDialogAction>
+																		</AlertDialogFooter>
+																	</AlertDialogContent>
+																</AlertDialog>
+																<DialogContent>
+																	<DialogHeader>
+																		<DialogTitle>
+																			Edit
+																			Data
+																			Reading
+																		</DialogTitle>
+																	</DialogHeader>
+																	{selectedReading && (
+																		<EditReadingForm
+																			reading={
+																				selectedReading
+																			}
+																			onSuccess={() => {
+																				setIsEditDialogOpen(
+																					false
+																				);
+																				setSelectedReading(
+																					null
+																				);
+																			}}
+																		/>
+																	)}
+																</DialogContent>
+															</Dialog>
+														</TableCell>
+													</TableRow>
+												);
 											})
 										)}
 									</TableBody>

@@ -5,12 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { AdminDataManagement } from "@/components/admin-data-management";
 import { AdminAnalytics } from "@/components/admin-analytics";
 import { AdminSettings } from "@/components/admin-settings";
-import {
-	LogOut,
-	Database,
-	BarChart3,
-	Settings,
-} from "lucide-react";
+import { LogOut, Database, BarChart3, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export function AdminDashboard() {

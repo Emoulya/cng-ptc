@@ -1,3 +1,4 @@
+// components\edit-reading-form.tsx
 "use client";
 
 import { useState } from "react";
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useUpdateReading } from "@/hooks/use-readings";
 import { useStoragesForOperator } from "@/hooks/use-storages";
-import type { ReadingWithFlowMeter } from "@/types/data";
+import type { ReadingWithFlowMeter, UpdateReadingPayload } from "@/types/data";
 import { Loader2 } from "lucide-react";
 
 // Helper function untuk konversi UTC ke local datetime string
@@ -48,6 +49,7 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 		temp: reading.temp,
 		psi_out: reading.psi_out,
 		flow_turbine: reading.flow_turbine,
+		remarks: reading.remarks ?? "",
 	});
 
 	const { mutate: updateReading, isPending } = useUpdateReading();
@@ -63,19 +65,19 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		const { created_at, ...updateData } = formData;
+
+		const updateData: UpdateReadingPayload = {
+			psi: Number(formData.psi),
+			temp: Number(formData.temp),
+			psi_out: Number(formData.psi_out),
+			flow_turbine: Number(formData.flow_turbine),
+			remarks: formData.remarks,
+		};
 
 		updateReading(
 			{
-				id: reading.id,
-				...updateData,
-				fixed_storage_quantity: Number(
-					updateData.fixed_storage_quantity
-				),
-				psi: Number(updateData.psi),
-				temp: Number(updateData.temp),
-				psi_out: Number(updateData.psi_out),
-				flow_turbine: Number(updateData.flow_turbine),
+				id: reading.id, // untuk URL
+				...updateData, // untuk body
 			},
 			{
 				onSuccess: () => {
@@ -191,6 +193,17 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 								"flow_turbine",
 								Number(e.target.value)
 							)
+						}
+					/>
+				</div>
+				<div className="col-span-2 space-y-2">
+					<Label htmlFor="remarks">Keterangan</Label>
+					<Input
+						id="remarks"
+						type="text"
+						value={formData.remarks}
+						onChange={(e) =>
+							handleInputChange("remarks", e.target.value)
 						}
 					/>
 				</div>

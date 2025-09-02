@@ -24,7 +24,7 @@ import {
 import { toast } from "sonner";
 import { Trash2, ShieldAlert, Loader2 } from "lucide-react";
 import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
-import { supabase } from "@/lib/supabase-client";
+import { deleteAllReadings } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function BulkOperations() {
@@ -40,7 +40,6 @@ export function BulkOperations() {
 
 	const { mutate: deleteReading, isPending: isDeletingSingle } =
 		useDeleteReading();
-
 	const [selectedItems, setSelectedItems] = useState<number[]>([]);
 	const [isDeletingAll, setIsDeletingAll] = useState(false);
 
@@ -73,19 +72,8 @@ export function BulkOperations() {
 	const handleClearAllData = async () => {
 		setIsDeletingAll(true);
 		try {
-			const { data: allIds, error: fetchError } = await supabase
-				.from("readings")
-				.select("id");
-			if (fetchError) throw fetchError;
-
-			if (allIds && allIds.length > 0) {
-				const idsToDelete = allIds.map((item) => item.id);
-				const { error: deleteError } = await supabase
-					.from("readings")
-					.delete()
-					.in("id", idsToDelete);
-				if (deleteError) throw deleteError;
-			}
+			// Panggil fungsi API yang baru, bukan supabase langsung
+			await deleteAllReadings();
 
 			toast.error("Semua Data Telah Dihapus", {
 				description: "Berhasil menghapus semua data gas storage.",
@@ -94,7 +82,9 @@ export function BulkOperations() {
 			queryClient.invalidateQueries({ queryKey: ["readings"] });
 			setSelectedItems([]);
 		} catch (error: any) {
-			toast.error("Gagal Menghapus", { description: error.message });
+			toast.error("Gagal Menghapus Semua Data", {
+				description: error.message,
+			});
 		} finally {
 			setIsDeletingAll(false);
 		}

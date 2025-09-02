@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { CustomerSelector } from "@/components/customer-selector";
 import { DataTable } from "@/components/data-table";
 import { DataEntryForm } from "@/components/data-entry-form";
+import { DumpingForm } from "@/components/dumping-form";
 import {
 	LogOut,
 	Plus,
@@ -14,6 +15,7 @@ import {
 	Activity,
 	Database,
 	Calendar,
+	Wind,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -21,17 +23,21 @@ export function OperatorDashboard() {
 	const { user, logout } = useAuth();
 	const router = useRouter();
 	const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+
 	const [showDataEntry, setShowDataEntry] = useState(false);
 	const [showDataTable, setShowDataTable] = useState(false);
+	const [showDumpingForm, setShowDumpingForm] = useState(false);
+
 	const [currentTime, setCurrentTime] = useState(new Date());
 
 	useEffect(() => {
+		// Reset semua view jika customer berubah
 		setShowDataEntry(false);
 		setShowDataTable(false);
+		setShowDumpingForm(false);
 	}, [selectedCustomer]);
 
 	useEffect(() => {
-		// Update waktu setiap detik
 		const timer = setInterval(() => setCurrentTime(new Date()), 1000);
 		return () => clearInterval(timer);
 	}, []);
@@ -41,8 +47,9 @@ export function OperatorDashboard() {
 		router.push("/");
 	};
 
-	const handleDataEntrySuccess = () => {
+	const handleSuccess = () => {
 		setShowDataEntry(false);
+		setShowDumpingForm(false);
 		setShowDataTable(true);
 	};
 
@@ -65,7 +72,7 @@ export function OperatorDashboard() {
 						</div>
 						<div>
 							<h1 className="text-xl font-bold tracking-tight">
-								Defueling Monitoring
+								Operation Monitoring
 							</h1>
 							<p className="text-blue-100 text-sm font-medium">
 								Operator: {user?.username}
@@ -119,24 +126,38 @@ export function OperatorDashboard() {
 							</CardContent>
 						</Card>
 
-						{/* Action Buttons */}
-						<div className="grid grid-cols-2 gap-4">
+						<div className="grid grid-cols-3 gap-4">
 							<Button
 								onClick={() => {
 									setShowDataEntry(true);
 									setShowDataTable(false);
+									setShowDumpingForm(false);
 								}}
-								className="h-16 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
+								className="h-16 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg">
 								<Plus className="h-5 w-5" />
 								<span className="font-medium">Input Data</span>
+							</Button>
+							{/* Tombol Dumping BARU */}
+							<Button
+								onClick={() => {
+									setShowDumpingForm(true);
+									setShowDataEntry(false);
+									setShowDataTable(false);
+								}}
+								className="h-16 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-lg">
+								<Wind className="h-5 w-5" />
+								<span className="font-medium">
+									Input Dumping
+								</span>
 							</Button>
 							<Button
 								variant="outline"
 								onClick={() => {
 									setShowDataTable(true);
 									setShowDataEntry(false);
+									setShowDumpingForm(false);
 								}}
-								className="h-16 flex flex-col items-center justify-center gap-2 border-2 border-blue-200 bg-white/70 backdrop-blur-sm hover:bg-blue-50 hover:border-blue-300 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]">
+								className="h-16 flex flex-col items-center justify-center gap-2 border-2 border-blue-200 bg-white/70 backdrop-blur-sm">
 								<BarChart3 className="h-5 w-5 text-blue-600" />
 								<span className="font-medium text-blue-700">
 									Lihat Data
@@ -145,20 +166,17 @@ export function OperatorDashboard() {
 						</div>
 
 						<div hidden={!showDataEntry}>
-							<Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm overflow-hidden">
-								<CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-100">
-									<CardTitle className="text-lg flex items-center gap-2 text-gray-800">
-										<Plus className="h-5 w-5 text-green-600" />
-										Input Data - {selectedCustomer}
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="p-6">
-									<DataEntryForm
-										customerCode={selectedCustomer}
-										onSuccess={handleDataEntrySuccess}
-									/>
-								</CardContent>
-							</Card>
+							<DataEntryForm
+								customerCode={selectedCustomer}
+								onSuccess={handleSuccess}
+							/>
+						</div>
+
+						<div hidden={!showDumpingForm}>
+							<DumpingForm
+								customerCode={selectedCustomer}
+								onSuccess={handleSuccess}
+							/>
 						</div>
 
 						<div hidden={!showDataTable}>

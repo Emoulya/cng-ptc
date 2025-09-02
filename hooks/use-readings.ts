@@ -1,3 +1,4 @@
+// hooks\use-readings.ts
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,10 +8,26 @@ import {
 	deleteReading,
 	getReadingsByCustomer,
 	updateReading,
+	addDumpingReading,
+	getProcessedReadingsByCustomer,
 } from "@/lib/api";
 import type { ReadingFilters } from "@/lib/api";
 import { toast } from "sonner";
-import type { NewReading, UpdateReading } from "@/types/data";
+import type {
+	NewReading,
+	UpdateReading,
+	NewDumpingData,
+	TableRowData,
+} from "@/types/data";
+
+// Hook  untuk mendapatkan data yang sudah diproses dari backend
+export const useProcessedReadingsByCustomer = (customerCode: string) => {
+	return useQuery<TableRowData[]>({
+		queryKey: ["processed-readings", customerCode],
+		queryFn: () => getProcessedReadingsByCustomer(customerCode),
+		enabled: !!customerCode,
+	});
+};
 
 // Hook untuk mendapatkan SEMUA data readings
 export const useAllReadings = (filters: ReadingFilters) => {
@@ -35,14 +52,18 @@ export const useAddReading = (options?: { onSuccess?: () => void }) => {
 	return useMutation({
 		mutationFn: (newReading: NewReading) => addReading(newReading),
 		onSuccess: (_, variables) => {
-			const hour = new Date(variables.created_at)
+			const hour = new Date(variables.recorded_at)
 				.getHours()
 				.toString()
 				.padStart(2, "0");
 			toast.success("Data Tersimpan", {
 				description: `Data untuk jam ${hour}:00 berhasil dicatat.`,
 			});
-			// Invalidate queries agar data di UI otomatis ter-update
+			// Invalidate query yang benar agar tabel di UI otomatis ter-update
+			queryClient.invalidateQueries({
+				queryKey: ["processed-readings", variables.customer_code],
+			});
+			// Juga invalidate query data mentah untuk bagian lain dari aplikasi (misal: admin)
 			queryClient.invalidateQueries({ queryKey: ["readings"] });
 
 			options?.onSuccess?.();
@@ -63,6 +84,8 @@ export const useUpdateReading = () => {
 		onSuccess: () => {
 			toast.success("Data berhasil diperbarui");
 			queryClient.invalidateQueries({ queryKey: ["readings"] });
+			// Invalidate juga data yang sudah diproses
+			queryClient.invalidateQueries({ queryKey: ["processed-readings"] });
 		},
 		onError: (error: Error) => {
 			toast.error("Gagal memperbarui data", {
@@ -80,9 +103,38 @@ export const useDeleteReading = () => {
 		onSuccess: () => {
 			// Tidak perlu toast di sini karena akan di-handle di BulkOperations
 			queryClient.invalidateQueries({ queryKey: ["readings"] });
+			// Invalidate juga data yang sudah diproses
+			queryClient.invalidateQueries({ queryKey: ["processed-readings"] });
 		},
 		onError: (error: Error) => {
 			toast.error("Gagal Menghapus Data", { description: error.message });
+		},
+	});
+};
+
+// Hook untuk MENAMBAH data DUMPING baru
+export const useAddDumping = (options?: { onSuccess?: () => void }) => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (dumpingData: NewDumpingData) =>
+			addDumpingReading(dumpingData),
+		onSuccess: (_, variables) => {
+			toast.success("Operasi Dumping Berhasil", {
+				description: `Data dumping telah berhasil dicatat.`,
+			});
+			// Invalidate query yang benar agar tabel di UI otomatis ter-update
+			queryClient.invalidateQueries({
+				queryKey: ["processed-readings", variables.customer_code],
+			});
+			// Juga invalidate query data mentah untuk bagian lain dari aplikasi (misal: admin)
+			queryClient.invalidateQueries({ queryKey: ["readings"] });
+
+			options?.onSuccess?.();
+		},
+		onError: (error: Error) => {
+			toast.error("Gagal Mencatat Dumping", {
+				description: error.message || "Terjadi kesalahan. Coba lagi.",
+			});
 		},
 	});
 };

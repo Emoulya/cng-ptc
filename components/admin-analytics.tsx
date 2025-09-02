@@ -1,7 +1,6 @@
+// cng-ptc/components/admin-analytics.tsx
 "use client";
 
-import { useMemo } from "react";
-import { useAllReadings } from "@/hooks/use-readings";
 import {
 	Card,
 	CardContent,
@@ -11,69 +10,29 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Loader2 } from "lucide-react";
-
-interface AnalyticsData {
-	totalReadings: number;
-	avgPSI: number;
-	avgTemp: number;
-	avgFlow: number;
-	topCustomers: { customer: string; readings: number }[];
-}
+import { useAnalytics } from "@/hooks/use-analytics";
+import { TimeRangeAnalytics } from "./TimeRangeAnalytics";
 
 export function AdminAnalytics() {
-	// Panggil useAllReadings dengan filter default untuk mengambil semua data
-	const { data: readings = [], isLoading } = useAllReadings({
-		customer: "all",
-		operator: "all",
-		searchTerm: "",
-		sortOrder: "asc",
-	});
-
-	// Gunakan useMemo untuk menghitung data analitik hanya saat data 'readings' berubah
-	const analyticsData = useMemo<AnalyticsData>(() => {
-		if (readings.length === 0) {
-			return {
-				totalReadings: 0,
-				avgPSI: 0,
-				avgTemp: 0,
-				avgFlow: 0,
-				topCustomers: [],
-			};
-		}
-
-		const totalPSI = readings.reduce((sum, r) => sum + Number(r.psi), 0);
-		const totalTemp = readings.reduce((sum, r) => sum + Number(r.temp), 0);
-		const totalFlow = readings.reduce(
-			(sum, r) => sum + Number(r.flow_turbine),
-			0
-		);
-
-		const customerCounts = readings.reduce((acc, r) => {
-			acc[r.customer_code] = (acc[r.customer_code] || 0) + 1;
-			return acc;
-		}, {} as Record<string, number>);
-
-		const topCustomers = Object.entries(customerCounts)
-			.map(([customer, readings]) => ({ customer, readings }))
-			.sort((a, b) => b.readings - a.readings)
-			.slice(0, 5);
-
-		return {
-			totalReadings: readings.length,
-			avgPSI: parseFloat((totalPSI / readings.length).toFixed(1)),
-			avgTemp: parseFloat((totalTemp / readings.length).toFixed(1)),
-			avgFlow: parseFloat((totalFlow / readings.length).toFixed(1)),
-			topCustomers: topCustomers,
-		};
-	}, [readings]);
+	// Panggil hook untuk mengambil data yang sudah diproses dari backend
+	const { data: analyticsData, isLoading } = useAnalytics();
 
 	if (isLoading) {
 		return (
 			<div className="flex justify-center items-center py-10">
 				<Loader2 className="h-8 w-8 animate-spin text-gray-500" />
 				<p className="ml-3 text-gray-600">
-					Menghitung data analitik...
+					Memuat data analitik dari server...
 				</p>
+			</div>
+		);
+	}
+
+	// Jika tidak ada data atau terjadi error
+	if (!analyticsData) {
+		return (
+			<div className="text-center text-gray-500 py-10">
+				Tidak ada data untuk dianalisis.
 			</div>
 		);
 	}
@@ -193,6 +152,7 @@ export function AdminAnalytics() {
 					)}
 				</CardContent>
 			</Card>
+			<TimeRangeAnalytics />
 		</div>
 	);
 }

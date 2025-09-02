@@ -162,27 +162,18 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 
 		// Fungsi untuk memproses dan mengirim data
 		const processAndSubmit = () => {
-			// --- LOGIKA PEMBULATAN WAKTU YANG BARU ---
-			const localDate = new Date(); // Ambil tanggal aktual
-			const [hourStr, minuteStr] = formData.recordingTime.split(":");
-			let hour = parseInt(hourStr, 10);
-			const minute = parseInt(minuteStr, 10);
+			const localDate = new Date();
+			const [hour, minute] = formData.recordingTime.split(":");
 
-			// Aturan: jika menit ke-45 atau lebih, bulatkan ke jam berikutnya
-			if (minute >= 45) {
-				hour += 1;
-			}
-
-			// Buat objek tanggal baru dengan jam yang sudah dibulatkan, dan set menit ke 00
 			const recordedDate = new Date(
 				localDate.getFullYear(),
 				localDate.getMonth(),
 				localDate.getDate(),
-				hour, // Gunakan jam yang sudah disesuaikan
-				0, // Set menit ke 0
-				0 // Set detik ke 0
+				parseInt(hour),
+				parseInt(minute)
 			);
 
+			// Kirim timestamp ISO yang sudah presisi
 			const finalTimestamp = recordedDate.toISOString();
 
 			const submissionData = {
@@ -283,10 +274,6 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 							className="h-12 text-base"
 							required
 						/>
-						<p className="text-xs text-gray-500">
-							Waktu akan dibulatkan ke jam terdekat (xx:45 ke
-							atas).
-						</p>
 					</div>
 
 					{/* Measurement Fields Grid */}
@@ -297,7 +284,8 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 								htmlFor="psi"
 								className="text-base font-semibold text-gray-700 flex items-center gap-2">
 								<Gauge className="h-4 w-4 text-red-600" />
-								PSI <span className="text-red-500">*</span>
+								Pressure (PSI)
+								<span className="text-red-500">*</span>
 							</Label>
 							<Input
 								id="psi"
@@ -340,7 +328,8 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 								htmlFor="psiOut"
 								className="text-base font-semibold text-gray-700 flex items-center gap-2">
 								<Gauge className="h-4 w-4 text-indigo-600" />
-								PSI Out <span className="text-red-500">*</span>
+								P. Out (Bar)
+								<span className="text-red-500">*</span>
 							</Label>
 							<Input
 								id="psiOut"

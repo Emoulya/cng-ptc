@@ -8,14 +8,12 @@ import {
 	type ReactNode,
 	useCallback,
 } from "react";
-import { supabase } from "@/lib/supabase-client";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-// Definisikan tipe User baru yang menyertakan role
 export interface UserProfile {
 	id: string;
 	username: string;
 	role: "operator" | "admin" | "super_admin";
+	email?: string;
 }
 
 interface AuthContextType {
@@ -27,89 +25,90 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function untuk mengambil token dari local storage
+const getAuthToken = () => {
+	if (typeof window === "undefined") return null;
+	return localStorage.getItem("access_token");
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<UserProfile | null>(null);
-	// Inisialisasi isLoading ke true untuk menampilkan loader pada saat awal
 	const [isLoading, setIsLoading] = useState(true);
 
-	const getProfile = useCallback(
-		async (supabaseUser: SupabaseUser | null) => {
-			if (!supabaseUser) {
-				return null;
-			}
+	const getProfileFromToken = useCallback(async () => {
+		const token = getAuthToken();
+		if (!token) {
+			setIsLoading(false);
+			return;
+		}
 
-			const { data, error } = await supabase
-				.from("profiles")
-				.select("id, username, role")
-				.eq("id", supabaseUser.id)
-				.single();
+		try {
+			const response = await fetch(
+				`${process.env.NEXT_PUBLIC_API_URL}/auth/profile`,
+				{
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
+				}
+			);
 
-			if (error) {
-				console.error("Error fetching profile:", error);
-				return null;
+			if (response.ok) {
+				const profile = await response.json();
+				setUser(profile);
+			} else {
+				// Token tidak valid atau kedaluwarsa
+				localStorage.removeItem("access_token");
+				setUser(null);
 			}
-			return data as UserProfile;
-		},
-		[]
-	);
+		} catch (error) {
+			console.error("Failed to fetch profile:", error);
+			setUser(null);
+		} finally {
+			setIsLoading(false);
+		}
+	}, []);
 
 	useEffect(() => {
-		// Fungsi ini sekarang memiliki penanganan error yang kuat
-		const checkSessionAndSetUser = async () => {
-			try {
-				const {
-					data: { session },
-				} = await supabase.auth.getSession();
+		getProfileFromToken();
+	}, [getProfileFromToken]);
 
-				if (session) {
-					const profile = await getProfile(session.user);
-					setUser(profile);
-				} else {
-					setUser(null);
-				}
-			} catch (error) {
-				console.error("Error during session check:", error);
-				setUser(null); // Jika error, pastikan user dianggap logout
-			} finally {
-				setIsLoading(false);
-			}
-		};
-
-		// Jalankan pengecekan saat provider pertama kali dimuat
-		checkSessionAndSetUser();
-
-		// Siapkan listener untuk perubahan status auth berikutnya (login/logout)
-		const { data: authListener } = supabase.auth.onAuthStateChange(
-			(_event, session) => {
-				// Ketika status auth berubah, cukup update profil user
-				getProfile(session?.user ?? null).then((profile) => {
-					setUser(profile);
-				});
+	const login = async (email: string, password: string) => {
+		const response = await fetch(
+			`${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email, password }),
 			}
 		);
 
-		return () => {
-			authListener.subscription.unsubscribe();
-		};
-	}, [getProfile]);
-
-	const login = async (email: string, password: string) => {
-		const { data, error } = await supabase.auth.signInWithPassword({
-			email,
-			password,
-		});
-
-		if (error) throw error;
-
-		if (data.user) {
-			const profile = await getProfile(data.user);
-			setUser(profile);
+		if (!response.ok) {
+			const errorData = await response.json();
+			throw new Error(errorData.message || "Login failed");
 		}
+
+		const data = await response.json();
+		localStorage.setItem("access_token", data.access_token);
+		setUser(data.user);
 	};
 
 	const logout = async () => {
-		await supabase.auth.signOut();
-		setUser(null);
+		const token = getAuthToken();
+		try {
+			await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ accessToken: token }),
+			});
+		} catch (error) {
+			console.error("Logout failed:", error);
+		} finally {
+			// Selalu hapus token dan user state, bahkan jika request logout gagal
+			localStorage.removeItem("access_token");
+			setUser(null);
+		}
 	};
 
 	const value = {
