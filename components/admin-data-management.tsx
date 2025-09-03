@@ -1194,7 +1194,8 @@ export function AdminDataManagement() {
 											Bila ingin mengekspor semua data,
 											pastikan filter yang diterapkan{" "}
 											<strong>
-												(pilih "All" pada semua filter)
+												(pilih &quot;All&quot; pada
+												semua filter)
 											</strong>
 											/disesuaikan dengan keperluan.
 										</DialogDescription>
