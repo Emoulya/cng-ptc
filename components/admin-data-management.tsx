@@ -70,9 +70,9 @@ import {
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose,
+	DialogDescription,
+	DialogFooter,
+	DialogClose,
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -89,7 +89,6 @@ import {
 import { EditReadingForm } from "./edit-reading-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-
 
 function useDebounce<T>(value: T, delay: number): T {
 	const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -116,8 +115,9 @@ export function AdminDataManagement() {
 	const [isExporting, setIsExporting] = useState(false);
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-    const [selectedCustomersForExport, setSelectedCustomersForExport] = useState<string[]>([]);
+	const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+	const [selectedCustomersForExport, setSelectedCustomersForExport] =
+		useState<string[]>([]);
 
 	const filters = useMemo(
 		() => ({
@@ -168,11 +168,10 @@ export function AdminDataManagement() {
 			todayReadings: readingsToday,
 		};
 	}, [allReadingsForStats]);
-    
-    const uniqueCustomersInView = useMemo(() => {
-        return Array.from(new Set(readings.map((r) => r.customer_code)));
-    }, [readings]);
 
+	const uniqueCustomersInView = useMemo(() => {
+		return Array.from(new Set(readings.map((r) => r.customer_code)));
+	}, [readings]);
 
 	const formatDateTime = (timestamp: string) => {
 		const date = new Date(timestamp);
@@ -366,8 +365,8 @@ export function AdminDataManagement() {
 	const handleDelete = (id: number) => {
 		deleteReading(id);
 	};
-    
-    // --- FUNGSI EKSPOR DIPERBARUI ---
+
+	// --- FUNGSI EKSPOR DIPERBARUI ---
 	const handleExport = async () => {
 		if (selectedCustomersForExport.length === 0) {
 			toast.warning("Tidak ada pelanggan yang dipilih untuk diekspor.");
@@ -686,8 +685,23 @@ export function AdminDataManagement() {
 				XLSX.utils.sheet_add_json(newSheet, dataForSheet, {
 					origin: "A10",
 					header: [
-						"A", "B", "C", "D", "E", "F", "G", "H", "I",
-						"J", "K", "L", "M", "N", "O", "P", "Q",
+						"A",
+						"B",
+						"C",
+						"D",
+						"E",
+						"F",
+						"G",
+						"H",
+						"I",
+						"J",
+						"K",
+						"L",
+						"M",
+						"N",
+						"O",
+						"P",
+						"Q",
 					],
 					skipHeader: true,
 				});
@@ -702,14 +716,47 @@ export function AdminDataManagement() {
 					},
 					alignment: { vertical: "center", horizontal: "center" },
 				};
-				const headerStyle = { ...baseStyle, alignment: { ...baseStyle.alignment, wrapText: true } };
+				const headerStyle = {
+					...baseStyle,
+					alignment: { ...baseStyle.alignment, wrapText: true },
+				};
 				const blueFill = { fill: { fgColor: { rgb: "00b0f0" } } };
 				const yellowFill = { fill: { fgColor: { rgb: "ffff00" } } };
-                const redFill = { fill: { fgColor: { rgb: "FFC7CE" } } };
-				const tableCols = [ "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q" ];
+				const redFill = { fill: { fgColor: { rgb: "ff0000" } } };
+				const tableCols = [
+					"E",
+					"F",
+					"G",
+					"H",
+					"I",
+					"J",
+					"K",
+					"L",
+					"M",
+					"N",
+					"O",
+					"P",
+					"Q",
+				];
 
-				const topMergedCols = [ "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q" ];
-				const centerAlignment = { alignment: { vertical: "center", horizontal: "center" } };
+				const topMergedCols = [
+					"E",
+					"F",
+					"G",
+					"H",
+					"I",
+					"J",
+					"K",
+					"L",
+					"M",
+					"N",
+					"O",
+					"P",
+					"Q",
+				];
+				const centerAlignment = {
+					alignment: { vertical: "center", horizontal: "center" },
+				};
 				[3, 4].forEach((rowNum) => {
 					topMergedCols.forEach((col) => {
 						const cellAddr = `${col}${rowNum}`;
@@ -726,11 +773,20 @@ export function AdminDataManagement() {
 						const cellAddr = `${col}${rowNum}`;
 						const cell = newSheet[cellAddr];
 						if (!cell) newSheet[cellAddr] = { t: "s", v: "" };
-						newSheet[cellAddr].s = { ...(newSheet[cellAddr].s || {}), ...baseStyle };
-						if (rowNum === 6 && cell && (cell.t === "n" || cell.f)) {
+						newSheet[cellAddr].s = {
+							...(newSheet[cellAddr].s || {}),
+							...baseStyle,
+						};
+						if (
+							rowNum === 6 &&
+							cell &&
+							(cell.t === "n" || cell.f)
+						) {
 							if (col === "K") newSheet[cellAddr].s.numFmt = "0";
-							else if (col === "L") newSheet[cellAddr].s.numFmt = "#,##0.00";
-							else if (col === "M") newSheet[cellAddr].s.numFmt = "0%";
+							else if (col === "L")
+								newSheet[cellAddr].s.numFmt = "#,##0.00";
+							else if (col === "M")
+								newSheet[cellAddr].s.numFmt = "0%";
 						}
 					});
 				});
@@ -738,8 +794,12 @@ export function AdminDataManagement() {
 				[8, 9].forEach((rowNum) => {
 					tableCols.forEach((col) => {
 						const cellAddr = `${col}${rowNum}`;
-						if (!newSheet[cellAddr]) newSheet[cellAddr] = { t: "s", v: "" };
-						newSheet[cellAddr].s = { ...(newSheet[cellAddr].s || {}), ...headerStyle };
+						if (!newSheet[cellAddr])
+							newSheet[cellAddr] = { t: "s", v: "" };
+						newSheet[cellAddr].s = {
+							...(newSheet[cellAddr].s || {}),
+							...headerStyle,
+						};
 					});
 				});
 
@@ -747,30 +807,53 @@ export function AdminDataManagement() {
 					const currentRow = 10 + rowIndex;
 					let rowStyle = { ...baseStyle };
 
-					if ( "isDumpingTotalRow" in row || "isDumpingSummary" in row ) {
+					if (
+						"isDumpingTotalRow" in row ||
+						"isDumpingSummary" in row
+					) {
 						rowStyle = { ...rowStyle, ...blueFill };
 					} else if ("isChangeRow" in row) {
 						rowStyle = { ...rowStyle, ...yellowFill };
 					} else if ("isStopRow" in row) {
-                        rowStyle = { ...rowStyle, ...redFill };
-                    }
+						rowStyle = { ...rowStyle, ...redFill };
+					}
 
 					tableCols.forEach((col) => {
 						const cellAddr = `${col}${currentRow}`;
-						if (!newSheet[cellAddr]) newSheet[cellAddr] = { t: "s", v: "" };
+						if (!newSheet[cellAddr])
+							newSheet[cellAddr] = { t: "s", v: "" };
 						const cell = newSheet[cellAddr];
 						cell.s = { ...(cell.s || {}), ...rowStyle };
 						if (cell.t === "n" || cell.f) {
-							if (col === "N" || col === "O") cell.s.numFmt = "#,##0";
+							if (col === "N" || col === "O")
+								cell.s.numFmt = "#,##0";
 							else if (col === "P") cell.s.numFmt = "0%";
 						}
 					});
 				});
 
-				const colsToCheck = [ "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q" ];
+				const colsToCheck = [
+					"E",
+					"F",
+					"G",
+					"H",
+					"I",
+					"J",
+					"K",
+					"L",
+					"M",
+					"N",
+					"O",
+					"P",
+					"Q",
+				];
 				newSheet["!cols"] = colsToCheck.map((col) => {
 					let maxLen = 10;
-					for ( let rowIndex = 10; rowIndex < 10 + customerProcessedData.length; rowIndex++ ) {
+					for (
+						let rowIndex = 10;
+						rowIndex < 10 + customerProcessedData.length;
+						rowIndex++
+					) {
 						const cellAddr = `${col}${rowIndex}`;
 						const cell = newSheet[cellAddr];
 						if (cell && cell.v) {
@@ -792,8 +875,8 @@ export function AdminDataManagement() {
 				workbook,
 				`Laporan-Bulanan-${new Date().toISOString().split("T")[0]}.xlsm`
 			);
-            setIsExportDialogOpen(false); // Tutup dialog setelah berhasil
-            setSelectedCustomersForExport([]); // Reset pilihan
+			setIsExportDialogOpen(false); // Tutup dialog setelah berhasil
+			setSelectedCustomersForExport([]); // Reset pilihan
 		} catch (error) {
 			console.error("Gagal melakukan export:", error);
 			toast.error("Gagal Export", {
@@ -806,25 +889,28 @@ export function AdminDataManagement() {
 			setIsExporting(false);
 		}
 	};
-    
-    // --- HANDLER BARU UNTUK CHECKBOX ---
-    const handleExportCustomerSelection = (customerCode: string, isChecked: boolean) => {
-        setSelectedCustomersForExport(prev => {
-            if (isChecked) {
-                return [...prev, customerCode];
-            } else {
-                return prev.filter(code => code !== customerCode);
-            }
-        });
-    };
 
-    const handleSelectAllForExport = (isChecked: boolean) => {
-        if (isChecked) {
-            setSelectedCustomersForExport(uniqueCustomersInView);
-        } else {
-            setSelectedCustomersForExport([]);
-        }
-    };
+	// --- HANDLER BARU UNTUK CHECKBOX ---
+	const handleExportCustomerSelection = (
+		customerCode: string,
+		isChecked: boolean
+	) => {
+		setSelectedCustomersForExport((prev) => {
+			if (isChecked) {
+				return [...prev, customerCode];
+			} else {
+				return prev.filter((code) => code !== customerCode);
+			}
+		});
+	};
+
+	const handleSelectAllForExport = (isChecked: boolean) => {
+		if (isChecked) {
+			setSelectedCustomersForExport(uniqueCustomersInView);
+		} else {
+			setSelectedCustomersForExport([]);
+		}
+	};
 
 	return (
 		<div className="space-y-6">
@@ -1000,59 +1086,120 @@ export function AdminDataManagement() {
 										</SelectItem>
 									</SelectContent>
 								</Select>
-                                <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            className="flex items-center gap-2 bg-transparent"
-                                            disabled={isExporting}
-                                        >
-                                            <Download className="h-4 w-4" />
-                                            Export
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Pilih Pelanggan untuk Diekspor</DialogTitle>
-                                            <DialogDescription>
-                                                Pilih satu atau lebih pelanggan dari daftar di bawah ini untuk dimasukkan ke dalam file laporan.
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <div className="space-y-4 py-4">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="select-all-export"
-                                                    checked={selectedCustomersForExport.length === uniqueCustomersInView.length && uniqueCustomersInView.length > 0}
-                                                    onCheckedChange={(checked) => handleSelectAllForExport(checked as boolean)}
-                                                />
-                                                <Label htmlFor="select-all-export" className="font-medium">
-                                                    Pilih Semua
-                                                </Label>
-                                            </div>
-                                            <div className="max-h-60 overflow-y-auto space-y-2 rounded-md border p-4">
-                                                {uniqueCustomersInView.map(customerCode => (
-                                                    <div key={customerCode} className="flex items-center space-x-2">
-                                                        <Checkbox
-                                                            id={`export-${customerCode}`}
-                                                            checked={selectedCustomersForExport.includes(customerCode)}
-                                                            onCheckedChange={(checked) => handleExportCustomerSelection(customerCode, checked as boolean)}
-                                                        />
-                                                        <Label htmlFor={`export-${customerCode}`}>{customerCode}</Label>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <DialogFooter>
-                                            <DialogClose asChild>
-                                                <Button variant="outline">Batal</Button>
-                                            </DialogClose>
-                                            <Button onClick={handleExport} disabled={isExporting || selectedCustomersForExport.length === 0}>
-                                                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                                Lanjutkan Export ({selectedCustomersForExport.length})
-                                            </Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
+								<Dialog
+									open={isExportDialogOpen}
+									onOpenChange={setIsExportDialogOpen}>
+									<DialogTrigger asChild>
+										<Button
+											variant="outline"
+											className="flex items-center gap-2 bg-transparent"
+											disabled={isExporting}>
+											<Download className="h-4 w-4" />
+											Export
+										</Button>
+									</DialogTrigger>
+									<DialogContent>
+										<DialogHeader>
+											<DialogTitle>
+												Pilih Pelanggan untuk Diekspor
+											</DialogTitle>
+											<DialogDescription>
+												Pilih satu atau lebih pelanggan
+												dari daftar di bawah ini untuk
+												dimasukkan ke dalam file
+												laporan.
+											</DialogDescription>
+										</DialogHeader>
+										<div className="space-y-4 py-4">
+											<div className="flex items-center space-x-2">
+												<Checkbox
+													id="select-all-export"
+													checked={
+														selectedCustomersForExport.length ===
+															uniqueCustomersInView.length &&
+														uniqueCustomersInView.length >
+															0
+													}
+													onCheckedChange={(
+														checked
+													) =>
+														handleSelectAllForExport(
+															checked as boolean
+														)
+													}
+												/>
+												<Label
+													htmlFor="select-all-export"
+													className="font-medium">
+													Pilih Semua
+												</Label>
+											</div>
+											<div className="max-h-60 overflow-y-auto space-y-2 rounded-md border p-4">
+												{uniqueCustomersInView.map(
+													(customerCode) => (
+														<div
+															key={customerCode}
+															className="flex items-center space-x-2">
+															<Checkbox
+																id={`export-${customerCode}`}
+																checked={selectedCustomersForExport.includes(
+																	customerCode
+																)}
+																onCheckedChange={(
+																	checked
+																) =>
+																	handleExportCustomerSelection(
+																		customerCode,
+																		checked as boolean
+																	)
+																}
+															/>
+															<Label
+																htmlFor={`export-${customerCode}`}>
+																{customerCode}
+															</Label>
+														</div>
+													)
+												)}
+											</div>
+										</div>
+										<DialogFooter>
+											<DialogClose asChild>
+												<Button variant="outline">
+													Batal
+												</Button>
+											</DialogClose>
+											<Button
+												onClick={handleExport}
+												disabled={
+													isExporting ||
+													selectedCustomersForExport.length ===
+														0
+												}>
+												{isExporting ? (
+													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+												) : (
+													<Download className="mr-2 h-4 w-4" />
+												)}
+												Lanjutkan Export (
+												{
+													selectedCustomersForExport.length
+												}
+												)
+											</Button>
+										</DialogFooter>
+										<DialogDescription>
+											<strong>Note:</strong> Export ini
+											bergantung pada sistem filtering.
+											Bila ingin mengekspor semua data,
+											pastikan filter yang diterapkan{" "}
+											<strong>
+												(pilih "All" pada semua filter)
+											</strong>
+											/disesuaikan dengan keperluan.
+										</DialogDescription>
+									</DialogContent>
+								</Dialog>
 							</div>
 						</CardContent>
 					</Card>
@@ -1061,7 +1208,8 @@ export function AdminDataManagement() {
 						<CardHeader>
 							<CardTitle>Recent Data Entries</CardTitle>
 							<CardDescription>
-								Menampilkan {processedReadings.length} dari total data yang difilter.
+								Menampilkan {processedReadings.length} dari
+								total data yang difilter.
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
@@ -1074,9 +1222,13 @@ export function AdminDataManagement() {
 											<TableHead>Storage</TableHead>
 											<TableHead>Date</TableHead>
 											<TableHead>Time</TableHead>
-											<TableHead>Pressure (PSI)</TableHead>
+											<TableHead>
+												Pressure (PSI)
+											</TableHead>
 											<TableHead>Temp</TableHead>
-											<TableHead>P. Out ( Bar )</TableHead>
+											<TableHead>
+												P. Out ( Bar )
+											</TableHead>
 											<TableHead>Flow/Turbin</TableHead>
 											<TableHead>Flow Meter</TableHead>
 											<TableHead>Operator</TableHead>
