@@ -625,7 +625,7 @@ export function AdminDataManagement() {
 						if ("isStopRow" in row && row.isStopRow) {
 							const summary = row as StopSummaryRow;
 							return {
-								E: "STOP",
+								E: "TOTAL",
 								H: summary.duration,
 								M: Math.round(Number(summary.totalFlow)),
 								O: { t: "n", f: formulaForO },
@@ -1074,9 +1074,9 @@ export function AdminDataManagement() {
 											<TableHead>Storage</TableHead>
 											<TableHead>Date</TableHead>
 											<TableHead>Time</TableHead>
-											<TableHead>PSI</TableHead>
+											<TableHead>Pressure (PSI)</TableHead>
 											<TableHead>Temp</TableHead>
-											<TableHead>PSI Out</TableHead>
+											<TableHead>P. Out ( Bar )</TableHead>
 											<TableHead>Flow/Turbin</TableHead>
 											<TableHead>Flow Meter</TableHead>
 											<TableHead>Operator</TableHead>

@@ -20,11 +20,21 @@ import {
 	AlertTriangle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 
 export function OperatorDashboard() {
 	const { user, logout } = useAuth();
 	const router = useRouter();
 	const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+	const [timeRange, setTimeRange] = useState<
+		"day" | "week" | "month" | "all"
+	>("week");
 
 	const [showDataEntry, setShowDataEntry] = useState(false);
 	const [showDataTable, setShowDataTable] = useState(false);
@@ -210,14 +220,47 @@ export function OperatorDashboard() {
 						<div hidden={!showDataTable}>
 							<Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm overflow-hidden">
 								<CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
-									<CardTitle className="text-lg flex items-center gap-2 text-gray-800">
+									<CardTitle className="text-lg flex items-center gap-2 text-gray-800 mb-4">
 										<BarChart3 className="h-5 w-5 text-blue-600" />
 										Riwayat Data - {selectedCustomer}
 									</CardTitle>
+									<div className="pt-2">
+										<div className="flex items-center gap-2 max-w-xs">
+											<Calendar className="h-4 w-4 text-gray-500" />
+											<Select
+												value={timeRange}
+												onValueChange={(
+													value:
+														| "day"
+														| "week"
+														| "month"
+														| "all"
+												) => setTimeRange(value)}>
+												<SelectTrigger className="h-10 border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-blue-300 focus:border-blue-500">
+													<SelectValue placeholder="Pilih rentang waktu..." />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="day">
+														Hari Ini
+													</SelectItem>
+													<SelectItem value="week">
+														Minggu Ini
+													</SelectItem>
+													<SelectItem value="month">
+														Bulan Ini
+													</SelectItem>
+													<SelectItem value="all">
+														Semua Waktu
+													</SelectItem>
+												</SelectContent>
+											</Select>
+										</div>
+									</div>
 								</CardHeader>
 								<CardContent className="p-6">
 									<DataTable
 										customerCode={selectedCustomer}
+										timeRange={timeRange}
 									/>
 								</CardContent>
 							</Card>

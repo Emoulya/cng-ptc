@@ -72,6 +72,8 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 			psi_out: Number(formData.psi_out),
 			flow_turbine: Number(formData.flow_turbine),
 			remarks: formData.remarks,
+            storage_number: formData.storage_number,
+            fixed_storage_quantity: Number(formData.fixed_storage_quantity)
 		};
 
 		updateReading(
@@ -171,7 +173,7 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="psi_out">Pressure Out (P.Out)</Label>
+					<Label htmlFor="psi_out">P. Out ( Bar )</Label>
 					<Input
 						id="psi_out"
 						type="number"

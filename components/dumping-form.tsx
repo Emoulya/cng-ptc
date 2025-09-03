@@ -15,10 +15,13 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { useAddDumping } from "@/hooks/use-readings";
+import {
+	useAddDumping,
+	useProcessedReadingsByCustomer,
+} from "@/hooks/use-readings";
 import { useStoragesForOperator } from "@/hooks/use-storages";
 import { ArrowRight, Save, Wind, Loader2 } from "lucide-react";
-import type { NewDumpingData } from "@/types/data";
+import type { NewDumpingData, ReadingWithFlowMeter } from "@/types/data";
 
 interface DumpingFormProps {
 	customerCode: string;
@@ -45,6 +48,8 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 	const { user } = useAuth();
 	const { data: storages = [], isLoading: isLoadingStorages } =
 		useStoragesForOperator(customerCode);
+	const { data: readings = [] } =
+		useProcessedReadingsByCustomer(customerCode , "all");
 	const { mutate: addDumping, isPending: isSubmitting } = useAddDumping();
 
 	const [formData, setFormData] = useState(initialFormData);
@@ -53,6 +58,37 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 	useEffect(() => {
 		setFormData(initialFormData);
 	}, [customerCode]);
+
+	// Efek untuk MENGISI OTOMATIS form saat pertama kali dibuka
+	useEffect(() => {
+		if (
+			storages.length > 1 &&
+			readings.length > 0 &&
+			!formData.destination_storage_number
+		) {
+			// Saring untuk mendapatkan data valid yang punya nomor storage
+			const validReadings = readings.filter(
+				(r): r is ReadingWithFlowMeter =>
+					"storage_number" in r && !!r.storage_number
+			);
+
+			if (validReadings.length === 0) return;
+
+			// Tentukan TUJUAN: storage yang paling terakhir digunakan
+			const lastUsedStorageNumber =
+				validReadings[validReadings.length - 1].storage_number;
+
+			// Update state form dengan nilai tujuan yang sudah ditentukan
+			// Storage sumber dibiarkan kosong
+			if (lastUsedStorageNumber) {
+				setFormData((prev) => ({
+					...prev,
+					destination_storage_number: lastUsedStorageNumber,
+					source_storage_number: "",
+				}));
+			}
+		}
+	}, [storages, readings]);
 
 	const handleInputChange = (field: keyof typeof formData, value: string) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));

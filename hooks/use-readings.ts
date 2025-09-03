@@ -22,11 +22,14 @@ import type {
     NewStopReading,
 } from "@/types/data";
 
-// Hook  untuk mendapatkan data yang sudah diproses dari backend
-export const useProcessedReadingsByCustomer = (customerCode: string) => {
+// Hook untuk mendapatkan data yang sudah diproses dari backend
+export const useProcessedReadingsByCustomer = (
+    customerCode: string,
+    timeRange: 'day' | 'week' | 'month' | 'all'
+) => {
 	return useQuery<TableRowData[]>({
-		queryKey: ["processed-readings", customerCode],
-		queryFn: () => getProcessedReadingsByCustomer(customerCode),
+		queryKey: ["processed-readings", customerCode, timeRange],
+		queryFn: () => getProcessedReadingsByCustomer(customerCode, timeRange),
 		enabled: !!customerCode,
 	});
 };

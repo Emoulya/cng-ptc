@@ -1,7 +1,7 @@
 // cng-ptc/components/stop-form.tsx
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useAddStopReading, useProcessedReadingsByCustomer } from "@/hooks/use-readings";
-import { Clock, Gauge, Wind, FileText, Save, Loader2, AlertTriangle } from "lucide-react";
+import { Clock, Gauge, Wind, FileText, Save, Loader2, AlertTriangle, Thermometer } from "lucide-react";
 import type { ReadingWithFlowMeter } from "@/types/data";
 
 interface StopFormProps {
@@ -21,13 +21,15 @@ interface StopFormProps {
 export function StopForm({ customerCode, onSuccess }: StopFormProps) {
 	const { user } = useAuth();
     const [lastStorageNumber, setLastStorageNumber] = useState<string | null>(null);
+    const [lastFixedQuantity, setLastFixedQuantity] = useState<number | null>(null);
 
-    // Ambil data terbaru untuk mendapatkan nomor storage terakhir
-    const { data: readings = [] } = useProcessedReadingsByCustomer(customerCode);
+    const { data: readings = [] } = useProcessedReadingsByCustomer(customerCode, 'week');
 
 	const [formData, setFormData] = useState({
 		recordingTime: "",
 		psi: "",
+        temp: "",
+        psiOut: "",
 		flowTurbine: "",
 		remarks: "",
 	});
@@ -42,6 +44,7 @@ export function StopForm({ customerCode, onSuccess }: StopFormProps) {
                 );
             if (lastReading) {
                 setLastStorageNumber(lastReading.storage_number);
+                setLastFixedQuantity(lastReading.fixed_storage_quantity);
             }
         }
     }, [readings]);
@@ -53,6 +56,8 @@ export function StopForm({ customerCode, onSuccess }: StopFormProps) {
 			setFormData({
 				recordingTime: "",
 				psi: "",
+                temp: "",
+                psiOut: "",
 				flowTurbine: "",
 				remarks: "",
 			});
@@ -76,7 +81,7 @@ export function StopForm({ customerCode, onSuccess }: StopFormProps) {
             return;
         }
 
-		const requiredFields = ["recordingTime", "psi", "flowTurbine"];
+		const requiredFields = ["recordingTime", "psi", "temp", "psiOut", "flowTurbine"];
 		if (requiredFields.some((field) => !formData[field as keyof typeof formData])) {
 			toast.error("Validation Error", {
 				description: "Mohon isi semua field yang ditandai bintang (*)",
@@ -86,9 +91,11 @@ export function StopForm({ customerCode, onSuccess }: StopFormProps) {
 
 		addStopReading({
             customer_code: customerCode,
-            storage_number: lastStorageNumber,
+            storage_number: lastStorageNumber!,
             manual_created_at: formData.recordingTime,
             psi: parseFloat(formData.psi),
+            temp: parseFloat(formData.temp),
+            psi_out: parseFloat(formData.psiOut),
             flow_turbine: parseFloat(formData.flowTurbine),
             remarks: formData.remarks,
         });
@@ -131,6 +138,26 @@ export function StopForm({ customerCode, onSuccess }: StopFormProps) {
 							</Label>
 							<Input id="psi" type="number" step="0.1" placeholder="0.0" value={formData.psi}
 								onChange={(e) => handleInputChange("psi", e.target.value)}
+								className="h-12 text-base" />
+						</div>
+
+						<div className="space-y-3">
+							<Label htmlFor="temp" className="text-base font-semibold text-gray-700 flex items-center gap-2">
+								<Thermometer className="h-4 w-4 text-orange-600" />
+								Temperatur (°C) <span className="text-red-500">*</span>
+							</Label>
+							<Input id="temp" type="number" step="0.1" placeholder="0.0" value={formData.temp}
+								onChange={(e) => handleInputChange("temp", e.target.value)}
+								className="h-12 text-base" />
+						</div>
+
+						<div className="space-y-3">
+							<Label htmlFor="psiOut" className="text-base font-semibold text-gray-700 flex items-center gap-2">
+								<Gauge className="h-4 w-4 text-indigo-600" />
+								P. Out (Bar) <span className="text-red-500">*</span>
+							</Label>
+							<Input id="psiOut" type="number" step="0.1" placeholder="0.0" value={formData.psiOut}
+								onChange={(e) => handleInputChange("psiOut", e.target.value)}
 								className="h-12 text-base" />
 						</div>
 

@@ -43,14 +43,15 @@ import { EditReadingForm } from "./edit-reading-form";
 
 interface DataTableProps {
 	customerCode: string;
+	timeRange: "day" | "week" | "month" | "all";
 }
 
-export function DataTable({ customerCode }: DataTableProps) {
+export function DataTable({ customerCode, timeRange }: DataTableProps) {
 	const {
 		data: processedReadings = [],
 		isLoading,
 		isError,
-	} = useProcessedReadingsByCustomer(customerCode);
+	} = useProcessedReadingsByCustomer(customerCode, timeRange);
 
 	const { mutate: deleteReading } = useDeleteReading();
 
@@ -105,7 +106,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 							<TableHead>Waktu</TableHead>
 							<TableHead>Pressure (PSI)</TableHead>
 							<TableHead>Temp</TableHead>
-							<TableHead>Pressure Out (P.Out)</TableHead>
+							<TableHead>P. Out ( Bar )</TableHead>
 							<TableHead>Flow/Turbin</TableHead>
 							<TableHead>Flow Meter</TableHead>
 							<TableHead>Keterangan</TableHead>

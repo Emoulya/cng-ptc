@@ -39,6 +39,8 @@ export interface NewStopReading {
 	storage_number: string;
 	manual_created_at: string;
 	psi: number;
+	temp: number;
+	psi_out: number;
 	flow_turbine: number;
 	remarks?: string;
 }

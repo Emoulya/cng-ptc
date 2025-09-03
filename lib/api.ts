@@ -73,7 +73,7 @@ export const getAllReadings = async (
 		operator: filters.operator || "all",
 		searchTerm: filters.searchTerm || "",
 		sortOrder: filters.sortOrder || "asc",
-        timeRange: filters.timeRange || "week",
+		timeRange: filters.timeRange || "week",
 	}).toString();
 	const response = await fetch(
 		`${process.env.NEXT_PUBLIC_API_URL}/readings?${queryParams}`,
@@ -98,11 +98,13 @@ export const getReadingsByCustomer = async (
 };
 
 export const getProcessedReadingsByCustomer = async (
-	customerCode: string
+	customerCode: string,
+	timeRange: "day" | "week" | "month" | "all"
 ): Promise<TableRowData[]> => {
 	if (!customerCode) return [];
+	// Tambahkan timeRange sebagai query parameter
 	const response = await fetch(
-		`${process.env.NEXT_PUBLIC_API_URL}/readings/processed/${customerCode}`,
+		`${process.env.NEXT_PUBLIC_API_URL}/readings/processed/${customerCode}?timeRange=${timeRange}`,
 		{
 			headers: getAuthHeaders(),
 		}
@@ -138,17 +140,19 @@ export const addReading = async (reading: NewReading): Promise<void> => {
 	return handleResponse(response);
 };
 
-export const addStopReading = async (stopReading: NewStopReading): Promise<void> => {
-    const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/readings/stop`,
-        {
-            method: "POST",
-            headers: getAuthHeaders(),
-            body: JSON.stringify(stopReading),
-        }
-    );
-    return handleResponse(response);
-}
+export const addStopReading = async (
+	stopReading: NewStopReading
+): Promise<void> => {
+	const response = await fetch(
+		`${process.env.NEXT_PUBLIC_API_URL}/readings/stop`,
+		{
+			method: "POST",
+			headers: getAuthHeaders(),
+			body: JSON.stringify(stopReading),
+		}
+	);
+	return handleResponse(response);
+};
 
 export const updateReading = async (reading: UpdateReading): Promise<void> => {
 	const { id, ...payload } = reading;
