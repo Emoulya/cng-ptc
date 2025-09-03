@@ -77,6 +77,7 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 		updateReading(
 			{
 				id: reading.id, // untuk URL
+				customer_code: reading.customer_code,
 				...updateData, // untuk body
 			},
 			{
@@ -146,7 +147,7 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 			</div>
 			<div className="grid grid-cols-2 gap-4">
 				<div className="space-y-2">
-					<Label htmlFor="psi">PSI</Label>
+					<Label htmlFor="psi">Pressure (PSI)</Label>
 					<Input
 						id="psi"
 						type="number"
@@ -170,7 +171,7 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 					/>
 				</div>
 				<div className="space-y-2">
-					<Label htmlFor="psi_out">PSI Out</Label>
+					<Label htmlFor="psi_out">Pressure Out (P.Out)</Label>
 					<Input
 						id="psi_out"
 						type="number"

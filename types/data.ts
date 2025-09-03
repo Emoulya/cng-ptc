@@ -33,17 +33,17 @@ export interface NewReading {
 	remarks: string;
 }
 
-// Tipe data saat menambah pembacaan pada stop
+// Tipe untuk PAYLOAD FORM STOP
 export interface NewStopReading {
-    customer_code: string;
-    storage_number: string;
-    manual_created_at: string;
-    psi: number;
-    flow_turbine: number;
-    remarks?: string;
+	customer_code: string;
+	storage_number: string;
+	manual_created_at: string;
+	psi: number;
+	flow_turbine: number;
+	remarks?: string;
 }
 
-// Payload yang dikirim ke backend (tanpa id)
+// Payload yang dikirim ke backend untuk update (tanpa id)
 export interface UpdateReadingPayload {
 	psi?: number;
 	temp?: number;
@@ -53,12 +53,13 @@ export interface UpdateReadingPayload {
 	fixed_storage_quantity?: number;
 	recorded_at?: string;
 	storage_number?: string;
+	customer_code?: string;
 }
 
 // Parameter untuk fungsi update (butuh id di URL)
 export interface UpdateReading extends UpdateReadingPayload {
 	id: number;
-	customer_code: string;}
+}
 
 // Tipe data setelah flow_meter dihitung di client
 export interface ReadingWithFlowMeter extends ReadingFromDB {
@@ -70,45 +71,45 @@ export interface ReadingWithFlowMeter extends ReadingFromDB {
 // Tipe data untuk baris "CHANGE" (Kuning)
 export interface ChangeSummaryRow {
 	id: string;
-	isChangeRow: true; // Properti ini khusus untuk baris kuning
+	isChangeRow: true;
 	totalFlow: number;
-	duration: string; // Di sini digunakan untuk menyimpan `endTime`
+	duration: string;
 	customer_code: string;
 	recorded_at: string;
 }
 
-// Tipe data untuk baris "STOP" (Merah)
+// Tipe untuk BARIS STOP (MERAH)
 export interface StopSummaryRow {
-    id: string;
-    isStopRow: true;
-    totalFlow: number;
-    duration: string;
-    customer_code: string;
-    recorded_at: string;
+	id: string;
+	isStopRow: true;
+	totalFlow: number;
+	duration: string;
+	customer_code: string;
+	recorded_at: string;
 }
 
-// --- TIPE BARU UNTUK TOTAL DUMPING (BIRU) ---
+// Tipe untuk TOTAL DUMPING (BIRU)
 export interface DumpingTotalRow {
 	id: string;
-	isDumpingTotalRow: true; // Penanda baru khusus untuk baris TOTAL biru
+	isDumpingTotalRow: true;
 	storage_number: string;
 	totalFlow: number;
-	duration: string; // Di sini digunakan untuk menyimpan `endTime`
+	duration: string;
 	customer_code: string;
 	recorded_at: string;
 }
 
-// --- TIPE BARU UNTUK DURASI DUMPING (BIRU) ---
+// Tipe untuk DURASI DUMPING (BIRU)
 export interface DumpingSummaryRow {
 	id: string;
-	isDumpingSummary: true; // Penanda untuk baris durasi dumping
+	isDumpingSummary: true;
 	totalFlow: number;
-	duration: string; // Di sini untuk menyimpan durasi total (MM:SS)
+	duration: string;
 	customer_code: string;
 	recorded_at: string;
 }
 
-// Tipe gabungan untuk tabel, sekarang mencakup semua jenis baris
+// Tipe gabungan untuk tabel
 export type TableRowData =
 	| ReadingWithFlowMeter
 	| ChangeSummaryRow
@@ -136,7 +137,7 @@ export interface Customer {
 	name: string | null;
 }
 
-// --- Tipe Storage Diperbarui ---
+// --- Tipe Storage  ---
 export interface Storage {
 	id: number;
 	storage_number: string;
@@ -145,7 +146,7 @@ export interface Storage {
 	default_quantity: number | null;
 }
 
-// --- Tipe untuk Storage BARU ---
+// --- Tipe untuk Storage  ---
 export interface NewStorage {
 	storage_number: string;
 	type: "mobile" | "fixed";
@@ -177,8 +178,8 @@ export interface NewDumpingData {
 	flow_turbine_before: number;
 	flow_turbine_after: number;
 	psi_out: number;
-	time_before: string; // Format "HH:mm"
-	time_after: string; // Format "HH:mm"
+	time_before: string;
+	time_after: string;
 }
 
 export interface AnalyticsData {

@@ -103,9 +103,9 @@ export function DataTable({ customerCode }: DataTableProps) {
 							<TableHead>Storage</TableHead>
 							<TableHead>Tanggal</TableHead>
 							<TableHead>Waktu</TableHead>
-							<TableHead>PSI</TableHead>
+							<TableHead>Pressure (PSI)</TableHead>
 							<TableHead>Temp</TableHead>
-							<TableHead>PSI Out</TableHead>
+							<TableHead>Pressure Out (P.Out)</TableHead>
 							<TableHead>Flow/Turbin</TableHead>
 							<TableHead>Flow Meter</TableHead>
 							<TableHead>Keterangan</TableHead>
