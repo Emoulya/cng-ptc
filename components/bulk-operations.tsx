@@ -36,6 +36,7 @@ export function BulkOperations() {
 		operator: "all",
 		searchTerm: "",
 		sortOrder: "asc",
+		timeRange: "all",
 	});
 
 	const { mutate: deleteReading, isPending: isDeletingSingle } =

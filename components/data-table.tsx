@@ -1,4 +1,4 @@
-// components\data-table.tsx
+// components/data-table.tsx
 "use client";
 
 import { useState } from "react";
@@ -18,11 +18,12 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { useProcessedReadingsByCustomer } from "@/hooks/use-readings";
-import { Loader2, Database, Pencil } from "lucide-react";
+import { Loader2, Database, Pencil, Trash2 } from "lucide-react"; // 🔥 Tambahin Trash2
 import type {
 	ReadingWithFlowMeter,
 	TableRowData,
 	DumpingTotalRow,
+	StopSummaryRow,
 } from "@/types/data";
 import { EditReadingForm } from "./edit-reading-form";
 
@@ -58,6 +59,14 @@ export function DataTable({ customerCode }: DataTableProps) {
 	const handleEditClick = (reading: ReadingWithFlowMeter) => {
 		setSelectedReading(reading);
 		setIsEditDialogOpen(true);
+	};
+
+	// 🔥 Handler untuk delete
+	const handleDeleteClick = (reading: ReadingWithFlowMeter) => {
+		if (confirm("Yakin mau hapus data ini?")) {
+			console.log("Delete reading", reading.id);
+			// TODO: panggil API delete di sini
+		}
 	};
 
 	return (
@@ -143,6 +152,32 @@ export function DataTable({ customerCode }: DataTableProps) {
 										</TableRow>
 									);
 								}
+								if ("isStopRow" in row && row.isStopRow) {
+									const summary = row as StopSummaryRow;
+									return (
+										<TableRow
+											key={summary.id}
+											className="bg-red-200 hover:bg-red-300 font-bold text-red-900">
+											<TableCell>STOP</TableCell>
+											<TableCell></TableCell>
+											<TableCell>
+												{
+													formatDateTime(
+														summary.recorded_at
+													).date
+												}
+											</TableCell>
+											<TableCell>
+												{summary.duration}
+											</TableCell>
+											<TableCell colSpan={4}></TableCell>
+											<TableCell>
+												{Math.round(summary.totalFlow)}
+											</TableCell>
+											<TableCell colSpan={2}></TableCell>
+										</TableRow>
+									);
+								}
 								if ("isDumpingTotalRow" in row) {
 									const summary = row as DumpingTotalRow;
 									return (
@@ -221,7 +256,7 @@ export function DataTable({ customerCode }: DataTableProps) {
 										<TableCell className="text-sm max-w-[150px]">
 											{reading.remarks || "-"}
 										</TableCell>
-										<TableCell>
+										<TableCell className="flex gap-2">
 											{reading.is_editable && (
 												<Button
 													variant="outline"
@@ -230,6 +265,18 @@ export function DataTable({ customerCode }: DataTableProps) {
 														handleEditClick(reading)
 													}>
 													<Pencil className="h-4 w-4" />
+												</Button>
+											)}
+											{reading.is_deletable && (
+												<Button
+													variant="destructive"
+													size="sm"
+													onClick={() =>
+														handleDeleteClick(
+															reading
+														)
+													}>
+													<Trash2 className="h-4 w-4" />
 												</Button>
 											)}
 										</TableCell>

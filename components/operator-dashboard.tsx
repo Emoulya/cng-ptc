@@ -8,6 +8,7 @@ import { CustomerSelector } from "@/components/customer-selector";
 import { DataTable } from "@/components/data-table";
 import { DataEntryForm } from "@/components/data-entry-form";
 import { DumpingForm } from "@/components/dumping-form";
+import { StopForm } from "@/components/stop-form";
 import {
 	LogOut,
 	Plus,
@@ -16,6 +17,7 @@ import {
 	Database,
 	Calendar,
 	Wind,
+	AlertTriangle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -27,6 +29,7 @@ export function OperatorDashboard() {
 	const [showDataEntry, setShowDataEntry] = useState(false);
 	const [showDataTable, setShowDataTable] = useState(false);
 	const [showDumpingForm, setShowDumpingForm] = useState(false);
+	const [showStopForm, setShowStopForm] = useState(false);
 
 	const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -35,6 +38,7 @@ export function OperatorDashboard() {
 		setShowDataEntry(false);
 		setShowDataTable(false);
 		setShowDumpingForm(false);
+		setShowStopForm(false);
 	}, [selectedCustomer]);
 
 	useEffect(() => {
@@ -50,6 +54,7 @@ export function OperatorDashboard() {
 	const handleSuccess = () => {
 		setShowDataEntry(false);
 		setShowDumpingForm(false);
+		setShowStopForm(false);
 		setShowDataTable(true);
 	};
 
@@ -126,23 +131,25 @@ export function OperatorDashboard() {
 							</CardContent>
 						</Card>
 
-						<div className="grid grid-cols-3 gap-4">
+						<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 							<Button
 								onClick={() => {
 									setShowDataEntry(true);
 									setShowDataTable(false);
 									setShowDumpingForm(false);
+									setShowStopForm(false);
 								}}
 								className="h-16 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg">
 								<Plus className="h-5 w-5" />
 								<span className="font-medium">Input Data</span>
 							</Button>
-							{/* Tombol Dumping BARU */}
+
 							<Button
 								onClick={() => {
 									setShowDumpingForm(true);
 									setShowDataEntry(false);
 									setShowDataTable(false);
+									setShowStopForm(false);
 								}}
 								className="h-16 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-lg">
 								<Wind className="h-5 w-5" />
@@ -150,12 +157,26 @@ export function OperatorDashboard() {
 									Input Dumping
 								</span>
 							</Button>
+
+							<Button
+								onClick={() => {
+									setShowStopForm(true);
+									setShowDataEntry(false);
+									setShowDataTable(false);
+									setShowDumpingForm(false);
+								}}
+								className="h-16 flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-lg">
+								<AlertTriangle className="h-5 w-5" />
+								<span className="font-medium">Input STOP</span>
+							</Button>
+
 							<Button
 								variant="outline"
 								onClick={() => {
 									setShowDataTable(true);
 									setShowDataEntry(false);
 									setShowDumpingForm(false);
+									setShowStopForm(false);
 								}}
 								className="h-16 flex flex-col items-center justify-center gap-2 border-2 border-blue-200 bg-white/70 backdrop-blur-sm">
 								<BarChart3 className="h-5 w-5 text-blue-600" />
@@ -174,6 +195,13 @@ export function OperatorDashboard() {
 
 						<div hidden={!showDumpingForm}>
 							<DumpingForm
+								customerCode={selectedCustomer}
+								onSuccess={handleSuccess}
+							/>
+						</div>
+
+						<div hidden={!showStopForm}>
+							<StopForm
 								customerCode={selectedCustomer}
 								onSuccess={handleSuccess}
 							/>

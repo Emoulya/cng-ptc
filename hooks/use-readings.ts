@@ -10,6 +10,7 @@ import {
 	updateReading,
 	addDumpingReading,
 	getProcessedReadingsByCustomer,
+	addStopReading,
 } from "@/lib/api";
 import type { ReadingFilters } from "@/lib/api";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ import type {
 	UpdateReading,
 	NewDumpingData,
 	TableRowData,
+	NewStopReading,
 } from "@/types/data";
 
 // Hook  untuk mendapatkan data yang sudah diproses dari backend
@@ -70,6 +72,29 @@ export const useAddReading = (options?: { onSuccess?: () => void }) => {
 		},
 		onError: (error: Error) => {
 			toast.error("Gagal Menyimpan Data", {
+				description: error.message || "Terjadi kesalahan. Coba lagi.",
+			});
+		},
+	});
+};
+
+export const useAddStopReading = (options?: { onSuccess?: () => void }) => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (stopReading: NewStopReading) =>
+			addStopReading(stopReading),
+		onSuccess: (_, variables) => {
+			toast.success("Data STOP Tersimpan", {
+				description: `Sesi laporan untuk ${variables.storage_number} telah dihentikan.`,
+			});
+			queryClient.invalidateQueries({
+				queryKey: ["processed-readings", variables.customer_code],
+			});
+			queryClient.invalidateQueries({ queryKey: ["readings"] });
+			options?.onSuccess?.();
+		},
+		onError: (error: Error) => {
+			toast.error("Gagal Menyimpan Data STOP", {
 				description: error.message || "Terjadi kesalahan. Coba lagi.",
 			});
 		},

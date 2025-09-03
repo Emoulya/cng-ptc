@@ -13,7 +13,7 @@ export interface ReadingFromDB {
 	psi_out: number;
 	flow_turbine: number;
 	remarks: string | null;
-	operation_type: "manual" | "dumping";
+	operation_type: "manual" | "dumping" | "stop";
 	profiles: {
 		username: string;
 	} | null;
@@ -31,6 +31,16 @@ export interface NewReading {
 	psi_out: number;
 	flow_turbine: number;
 	remarks: string;
+}
+
+// Tipe data saat menambah pembacaan pada stop
+export interface NewStopReading {
+    customer_code: string;
+    storage_number: string;
+    manual_created_at: string;
+    psi: number;
+    flow_turbine: number;
+    remarks?: string;
 }
 
 // Payload yang dikirim ke backend (tanpa id)
@@ -52,6 +62,7 @@ export interface UpdateReading extends UpdateReadingPayload {
 
 // Tipe data setelah flow_meter dihitung di client
 export interface ReadingWithFlowMeter extends ReadingFromDB {
+	is_deletable: any;
 	flowMeter: number | string;
 	is_editable: boolean;
 }
@@ -64,6 +75,16 @@ export interface ChangeSummaryRow {
 	duration: string; // Di sini digunakan untuk menyimpan `endTime`
 	customer_code: string;
 	recorded_at: string;
+}
+
+// Tipe data untuk baris "STOP" (Merah)
+export interface StopSummaryRow {
+    id: string;
+    isStopRow: true;
+    totalFlow: number;
+    duration: string;
+    customer_code: string;
+    recorded_at: string;
 }
 
 // --- TIPE BARU UNTUK TOTAL DUMPING (BIRU) ---
@@ -91,6 +112,7 @@ export interface DumpingSummaryRow {
 export type TableRowData =
 	| ReadingWithFlowMeter
 	| ChangeSummaryRow
+	| StopSummaryRow
 	| DumpingTotalRow
 	| DumpingSummaryRow;
 

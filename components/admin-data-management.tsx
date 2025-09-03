@@ -1,4 +1,4 @@
-// components\admin-data-management.tsx
+// cng-ptc/components/admin-data-management.tsx
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -47,6 +47,7 @@ import {
 	Edit,
 	Trash2,
 	Clock,
+	Calendar,
 } from "lucide-react";
 import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
 import { useCustomers } from "@/hooks/use-customers";
@@ -55,6 +56,7 @@ import type {
 	ReadingWithFlowMeter,
 	TableRowData,
 	DumpingTotalRow,
+	StopSummaryRow,
 } from "@/types/data";
 import { toast } from "sonner";
 import {
@@ -101,6 +103,10 @@ export function AdminDataManagement() {
 	const [selectedCustomer, setSelectedCustomer] = useState("all");
 	const [selectedOperator, setSelectedOperator] = useState("all");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+	const [timeRange, setTimeRange] = useState<
+		"day" | "week" | "month" | "all"
+	>("week");
+
 	const [isExporting, setIsExporting] = useState(false);
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -110,8 +116,15 @@ export function AdminDataManagement() {
 			operator: selectedOperator,
 			searchTerm: debouncedSearchTerm,
 			sortOrder: sortOrder,
+			timeRange: timeRange,
 		}),
-		[selectedCustomer, selectedOperator, debouncedSearchTerm, sortOrder]
+		[
+			selectedCustomer,
+			selectedOperator,
+			debouncedSearchTerm,
+			sortOrder,
+			timeRange,
+		]
 	);
 
 	const { data: readings = [], isLoading } = useAllReadings(filters);
@@ -121,6 +134,7 @@ export function AdminDataManagement() {
 		operator: "all",
 		searchTerm: "",
 		sortOrder: "asc",
+		timeRange: "week",
 	});
 
 	const { mutate: deleteReading } = useDeleteReading();
@@ -183,7 +197,9 @@ export function AdminDataManagement() {
 			if (
 				previous &&
 				current.storage_number === previous.storage_number &&
-				current.operation_type === previous.operation_type
+				(current.operation_type === previous.operation_type ||
+					(current.operation_type === "stop" &&
+						previous.operation_type === "manual"))
 			) {
 				const diff =
 					Number(current.flow_turbine) -
@@ -199,16 +215,26 @@ export function AdminDataManagement() {
 		while (i < readingsWithFlowMeter.length) {
 			const startReading = readingsWithFlowMeter[i];
 
-			if (startReading.operation_type === "manual") {
+			if (
+				startReading.operation_type === "manual" ||
+				startReading.operation_type === "stop"
+			) {
 				let endIndex = i;
 				while (
 					endIndex + 1 < readingsWithFlowMeter.length &&
 					readingsWithFlowMeter[endIndex + 1].storage_number ===
 						startReading.storage_number &&
-					readingsWithFlowMeter[endIndex + 1].operation_type ===
-						"manual"
+					(readingsWithFlowMeter[endIndex + 1].operation_type ===
+						"manual" ||
+						readingsWithFlowMeter[endIndex + 1].operation_type ===
+							"stop")
 				) {
 					endIndex++;
+					if (
+						readingsWithFlowMeter[endIndex].operation_type ===
+						"stop"
+					)
+						break;
 				}
 
 				const manualBlock = readingsWithFlowMeter.slice(
@@ -220,14 +246,32 @@ export function AdminDataManagement() {
 				const lastReadingInBlock = manualBlock[manualBlock.length - 1];
 				const nextReading = readingsWithFlowMeter[endIndex + 1];
 
-				if (nextReading) {
-					const totalFlow = manualBlock.reduce(
-						(sum, r) => sum + (Number(r.flowMeter) || 0),
-						0
-					);
-					const startTime = new Date(manualBlock[0].recorded_at);
-					const endTime = new Date(lastReadingInBlock.recorded_at);
+				// Pindahkan kalkulasi total flow dan durasi ke sini agar bisa dipakai bersama
+				const totalFlow = manualBlock.reduce(
+					(sum, r) => sum + (Number(r.flowMeter) || 0),
+					0
+				);
+				const startTime = new Date(manualBlock[0].recorded_at);
+				const endTime = new Date(lastReadingInBlock.recorded_at);
+				const diffMs = endTime.getTime() - startTime.getTime();
+				const diffMinutes = Math.floor(diffMs / 60000);
+				const pad = (num: number) => String(num).padStart(2, "0");
+				const durationStr = `${pad(Math.floor(diffMinutes / 60))}:${pad(
+					diffMinutes % 60
+				)}`;
 
+				// --- LOGIKA BARU UNTUK MENAMBAHKAN BARIS STOP ---
+				if (lastReadingInBlock.operation_type === "stop") {
+					result.push({
+						id: `stop-summary-${lastReadingInBlock.id}`,
+						isStopRow: true,
+						totalFlow,
+						duration: durationStr,
+						customer_code: lastReadingInBlock.customer_code,
+						recorded_at: lastReadingInBlock.recorded_at,
+					});
+				} else if (nextReading) {
+					// Lanjutkan ke logika CHANGE atau DUMPING jika bukan STOP
 					if (nextReading.operation_type === "dumping") {
 						const endTimeStr = endTime.toLocaleTimeString("id-ID", {
 							hour: "2-digit",
@@ -248,14 +292,6 @@ export function AdminDataManagement() {
 						nextReading.storage_number !==
 							lastReadingInBlock.storage_number
 					) {
-						const diffMs = endTime.getTime() - startTime.getTime();
-						const diffMinutes = Math.floor(diffMs / 60000);
-						const pad = (num: number) =>
-							String(num).padStart(2, "0");
-						const durationStr = `${pad(
-							Math.floor(diffMinutes / 60)
-						)}:${pad(diffMinutes % 60)}`;
-
 						result.push({
 							id: `change-${lastReadingInBlock.id}`,
 							isChangeRow: true,
@@ -352,24 +388,52 @@ export function AdminDataManagement() {
 				newSheet["I5"] = { t: "s", v: `PT. ${customerName}` };
 				newSheet["E3"] = { t: "s", v: `PT. ${customerName}` };
 
-				// --- LOGIKA PEMROSESAN DATA ---
-				const customerRawData = readings.filter(
-					(row) => row.customer_code === customerCode
-				);
+				// --- LOGIKA PEMROSESAN DATA UNTUK EKSPOR ---
+				const customerRawData = readings
+					.filter((row) => row.customer_code === customerCode)
+					.map((current, index, arr) => {
+						let flowMeter: number | string = "-";
+						const previous = arr[index - 1];
+						if (
+							previous &&
+							current.storage_number ===
+								previous.storage_number &&
+							(current.operation_type ===
+								previous.operation_type ||
+								(current.operation_type === "stop" &&
+									previous.operation_type === "manual"))
+						) {
+							const diff =
+								Number(current.flow_turbine) -
+								Number(previous.flow_turbine);
+							flowMeter = isNaN(diff) || diff < 0 ? "-" : diff;
+						}
+						return { ...current, flowMeter };
+					});
 				const customerProcessedData = [];
 				let i = 0;
 				while (i < customerRawData.length) {
 					const startReading = customerRawData[i];
-					if (startReading.operation_type === "manual") {
+					if (
+						startReading.operation_type === "manual" ||
+						startReading.operation_type === "stop"
+					) {
 						let endIndex = i;
 						while (
 							endIndex + 1 < customerRawData.length &&
 							customerRawData[endIndex + 1].storage_number ===
 								startReading.storage_number &&
-							customerRawData[endIndex + 1].operation_type ===
-								"manual"
+							(customerRawData[endIndex + 1].operation_type ===
+								"manual" ||
+								customerRawData[endIndex + 1].operation_type ===
+									"stop")
 						) {
 							endIndex++;
+							if (
+								customerRawData[endIndex].operation_type ===
+								"stop"
+							)
+								break;
 						}
 						const manualBlock = customerRawData.slice(
 							i,
@@ -413,8 +477,10 @@ export function AdminDataManagement() {
 										lastReadingInBlock.storage_number,
 								});
 							} else if (
+								nextReading.customer_code ===
+									lastReadingInBlock.customer_code &&
 								nextReading.storage_number !==
-								lastReadingInBlock.storage_number
+									lastReadingInBlock.storage_number
 							) {
 								const diffMs =
 									endTime.getTime() - startTime.getTime();
@@ -434,6 +500,39 @@ export function AdminDataManagement() {
 									recorded_at: lastReadingInBlock.recorded_at,
 								});
 							}
+						}
+						// Jika block berakhir dengan stop, tambahkan summary stop
+						if (
+							lastReadingInBlock.operation_type === "stop" &&
+							manualBlock.length > 1
+						) {
+							const totalFlow = manualBlock.reduce(
+								(sum, r: { flowMeter: number | string }) =>
+									sum + (Number(r.flowMeter) || 0),
+								0
+							);
+							const startTime = new Date(
+								manualBlock[0].recorded_at
+							);
+							const endTime = new Date(
+								lastReadingInBlock.recorded_at
+							);
+							const diffMs =
+								endTime.getTime() - startTime.getTime();
+							const diffMinutes = Math.floor(diffMs / 60000);
+							const pad = (num: number) =>
+								String(num).padStart(2, "0");
+							const durationStr = `${pad(
+								Math.floor(diffMinutes / 60)
+							)}:${pad(diffMinutes % 60)}`;
+							customerProcessedData.push({
+								id: `stop-summary-${lastReadingInBlock.id}`,
+								isStopRow: true,
+								totalFlow,
+								duration: durationStr,
+								customer_code: lastReadingInBlock.customer_code,
+								recorded_at: lastReadingInBlock.recorded_at,
+							});
 						}
 						i = endIndex + 1;
 					} else if (startReading.operation_type === "dumping") {
@@ -492,7 +591,8 @@ export function AdminDataManagement() {
 
 						if (
 							("isChangeRow" in row && row.isChangeRow) ||
-							"isDumpingTotalRow" in row
+							"isDumpingTotalRow" in row ||
+							("isStopRow" in row && row.isStopRow)
 						) {
 							const startRow = lastSpecialRowIndex + 1;
 							const endRow = currentRow - 1;
@@ -510,6 +610,15 @@ export function AdminDataManagement() {
 								E: "CHANGE",
 								H: row.duration,
 								M: Math.round(Number(row.totalFlow)),
+								O: { t: "n", f: formulaForO },
+							};
+						}
+						if ("isStopRow" in row && row.isStopRow) {
+							const summary = row as StopSummaryRow;
+							return {
+								E: "STOP",
+								H: summary.duration,
+								M: Math.round(Number(summary.totalFlow)),
 								O: { t: "n", f: formulaForO },
 							};
 						}
@@ -555,7 +664,8 @@ export function AdminDataManagement() {
 							L: Number(reading.flow_turbine),
 							M:
 								reading.flowMeter !== undefined &&
-								reading.flowMeter !== null
+								reading.flowMeter !== null &&
+								String(reading.flowMeter).trim() !== "-"
 									? Number(reading.flowMeter)
 									: "-",
 							O: { t: "n", f: formulaForO },
@@ -596,10 +706,7 @@ export function AdminDataManagement() {
 						left: { style: "thin", color: { rgb: "000000" } },
 						right: { style: "thin", color: { rgb: "000000" } },
 					},
-					alignment: {
-						vertical: "center",
-						horizontal: "center",
-					},
+					alignment: { vertical: "center", horizontal: "center" },
 				};
 				const headerStyle = {
 					...baseStyle,
@@ -607,6 +714,7 @@ export function AdminDataManagement() {
 				};
 				const blueFill = { fill: { fgColor: { rgb: "00b0f0" } } };
 				const yellowFill = { fill: { fgColor: { rgb: "ffff00" } } };
+				const redFill = { fill: { fgColor: { rgb: "ff0000" } } };
 				const tableCols = [
 					"E",
 					"F",
@@ -656,28 +764,21 @@ export function AdminDataManagement() {
 					topInfoCols.forEach((col) => {
 						const cellAddr = `${col}${rowNum}`;
 						const cell = newSheet[cellAddr];
-						if (!cell) {
-							newSheet[cellAddr] = { t: "s", v: "" };
-						}
-
-						// Terapkan style dasar
+						if (!cell) newSheet[cellAddr] = { t: "s", v: "" };
 						newSheet[cellAddr].s = {
 							...(newSheet[cellAddr].s || {}),
 							...baseStyle,
 						};
-
 						if (
 							rowNum === 6 &&
 							cell &&
 							(cell.t === "n" || cell.f)
 						) {
-							if (col === "K") {
-								newSheet[cellAddr].s.numFmt = "0";
-							} else if (col === "L") {
+							if (col === "K") newSheet[cellAddr].s.numFmt = "0";
+							else if (col === "L")
 								newSheet[cellAddr].s.numFmt = "#,##0.00";
-							} else if (col === "M") {
+							else if (col === "M")
 								newSheet[cellAddr].s.numFmt = "0%";
-							}
 						}
 					});
 				});
@@ -685,9 +786,8 @@ export function AdminDataManagement() {
 				[8, 9].forEach((rowNum) => {
 					tableCols.forEach((col) => {
 						const cellAddr = `${col}${rowNum}`;
-						if (!newSheet[cellAddr]) {
+						if (!newSheet[cellAddr])
 							newSheet[cellAddr] = { t: "s", v: "" };
-						}
 						newSheet[cellAddr].s = {
 							...(newSheet[cellAddr].s || {}),
 							...headerStyle,
@@ -706,23 +806,20 @@ export function AdminDataManagement() {
 						rowStyle = { ...rowStyle, ...blueFill };
 					} else if ("isChangeRow" in row) {
 						rowStyle = { ...rowStyle, ...yellowFill };
+					} else if ("isStopRow" in row) {
+						rowStyle = { ...rowStyle, ...redFill };
 					}
 
 					tableCols.forEach((col) => {
 						const cellAddr = `${col}${currentRow}`;
-						if (!newSheet[cellAddr]) {
+						if (!newSheet[cellAddr])
 							newSheet[cellAddr] = { t: "s", v: "" };
-						}
 						const cell = newSheet[cellAddr];
-
 						cell.s = { ...(cell.s || {}), ...rowStyle };
-
 						if (cell.t === "n" || cell.f) {
-							if (col === "N" || col === "O") {
+							if (col === "N" || col === "O")
 								cell.s.numFmt = "#,##0";
-							} else if (col === "P") {
-								cell.s.numFmt = "0%";
-							}
+							else if (col === "P") cell.s.numFmt = "0%";
 						}
 					});
 				});
@@ -874,6 +971,32 @@ export function AdminDataManagement() {
 									</div>
 								</div>
 								<Select
+									value={timeRange}
+									onValueChange={(
+										value: "day" | "week" | "month" | "all"
+									) => setTimeRange(value)}>
+									<SelectTrigger className="w-full md:w-[180px]">
+										<div className="flex items-center gap-2">
+											<Calendar className="h-4 w-4" />
+											<SelectValue placeholder="Pilih Waktu..." />
+										</div>
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="day">
+											Hari Ini
+										</SelectItem>
+										<SelectItem value="week">
+											Minggu Ini
+										</SelectItem>
+										<SelectItem value="month">
+											Bulan Ini
+										</SelectItem>
+										<SelectItem value="all">
+											Semua Waktu
+										</SelectItem>
+									</SelectContent>
+								</Select>
+								<Select
 									value={selectedCustomer}
 									onValueChange={setSelectedCustomer}>
 									<SelectTrigger className="w-full md:w-[180px]">
@@ -958,7 +1081,6 @@ export function AdminDataManagement() {
 						<CardContent>
 							<div className="overflow-x-auto">
 								<Table>
-									{/* --- BAGIAN HEADER TABEL TIDAK BERUBAH --- */}
 									<TableHeader>
 										<TableRow>
 											<TableHead>Customer</TableHead>
@@ -966,9 +1088,13 @@ export function AdminDataManagement() {
 											<TableHead>Storage</TableHead>
 											<TableHead>Date</TableHead>
 											<TableHead>Time</TableHead>
-											<TableHead>PSI</TableHead>
+											<TableHead>
+												Pressure (PSI)
+											</TableHead>
 											<TableHead>Temp</TableHead>
-											<TableHead>PSI Out</TableHead>
+											<TableHead>
+												Pressure Out (P.Out)
+											</TableHead>
 											<TableHead>Flow/Turbin</TableHead>
 											<TableHead>Flow Meter</TableHead>
 											<TableHead>Operator</TableHead>
@@ -995,7 +1121,6 @@ export function AdminDataManagement() {
 												</TableCell>
 											</TableRow>
 										) : (
-											// --- LOGIKA RENDERING BARU DARI data-table.tsx DITERAPKAN DI SINI ---
 											processedReadings.map((row) => {
 												if (
 													"isChangeRow" in row &&
@@ -1029,6 +1154,51 @@ export function AdminDataManagement() {
 															<TableCell>
 																{Math.round(
 																	row.totalFlow
+																)}
+															</TableCell>
+															<TableCell
+																colSpan={
+																	3
+																}></TableCell>
+														</TableRow>
+													);
+												}
+												if (
+													"isStopRow" in row &&
+													row.isStopRow
+												) {
+													const summary =
+														row as StopSummaryRow;
+													return (
+														<TableRow
+															key={summary.id}
+															className="bg-red-200 hover:bg-red-300 font-bold text-red-900">
+															<TableCell>
+																STOP
+															</TableCell>
+															<TableCell
+																colSpan={
+																	2
+																}></TableCell>
+															<TableCell>
+																{
+																	formatDateTime(
+																		summary.recorded_at
+																	).date
+																}
+															</TableCell>
+															<TableCell>
+																{
+																	summary.duration
+																}
+															</TableCell>
+															<TableCell
+																colSpan={
+																	4
+																}></TableCell>
+															<TableCell>
+																{Math.round(
+																	summary.totalFlow
 																)}
 															</TableCell>
 															<TableCell

@@ -15,6 +15,7 @@ import type {
 	AnalyticsData,
 	TimeSeriesData,
 	TableRowData,
+	NewStopReading,
 } from "@/types/data";
 
 // Helper function untuk mendapatkan token, bisa digunakan di semua fungsi API
@@ -59,6 +60,7 @@ export interface ReadingFilters {
 	operator: string;
 	searchTerm: string;
 	sortOrder: "asc" | "desc";
+	timeRange: "day" | "week" | "month" | "all";
 }
 
 // === API Functions for Readings ===
@@ -71,6 +73,7 @@ export const getAllReadings = async (
 		operator: filters.operator || "all",
 		searchTerm: filters.searchTerm || "",
 		sortOrder: filters.sortOrder || "asc",
+        timeRange: filters.timeRange || "week",
 	}).toString();
 	const response = await fetch(
 		`${process.env.NEXT_PUBLIC_API_URL}/readings?${queryParams}`,
@@ -90,6 +93,7 @@ export const getReadingsByCustomer = async (
 		operator: "all",
 		searchTerm: "",
 		sortOrder: "asc",
+		timeRange: "week",
 	});
 };
 
@@ -133,6 +137,18 @@ export const addReading = async (reading: NewReading): Promise<void> => {
 	);
 	return handleResponse(response);
 };
+
+export const addStopReading = async (stopReading: NewStopReading): Promise<void> => {
+    const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/readings/stop`,
+        {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(stopReading),
+        }
+    );
+    return handleResponse(response);
+}
 
 export const updateReading = async (reading: UpdateReading): Promise<void> => {
 	const { id, ...payload } = reading;
