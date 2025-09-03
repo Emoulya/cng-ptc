@@ -1,4 +1,4 @@
-// hooks\use-readings.ts
+// hooks/use-readings.ts
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,7 +10,7 @@ import {
 	updateReading,
 	addDumpingReading,
 	getProcessedReadingsByCustomer,
-	addStopReading,
+    addStopReading,
 } from "@/lib/api";
 import type { ReadingFilters } from "@/lib/api";
 import { toast } from "sonner";
@@ -19,7 +19,7 @@ import type {
 	UpdateReading,
 	NewDumpingData,
 	TableRowData,
-	NewStopReading,
+    NewStopReading,
 } from "@/types/data";
 
 // Hook  untuk mendapatkan data yang sudah diproses dari backend
@@ -78,27 +78,27 @@ export const useAddReading = (options?: { onSuccess?: () => void }) => {
 	});
 };
 
+// Hook untuk MENAMBAH data STOP baru
 export const useAddStopReading = (options?: { onSuccess?: () => void }) => {
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: (stopReading: NewStopReading) =>
-			addStopReading(stopReading),
-		onSuccess: (_, variables) => {
-			toast.success("Data STOP Tersimpan", {
-				description: `Sesi laporan untuk ${variables.storage_number} telah dihentikan.`,
-			});
-			queryClient.invalidateQueries({
-				queryKey: ["processed-readings", variables.customer_code],
-			});
-			queryClient.invalidateQueries({ queryKey: ["readings"] });
-			options?.onSuccess?.();
-		},
-		onError: (error: Error) => {
-			toast.error("Gagal Menyimpan Data STOP", {
-				description: error.message || "Terjadi kesalahan. Coba lagi.",
-			});
-		},
-	});
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (stopReading: NewStopReading) => addStopReading(stopReading),
+        onSuccess: (_, variables) => {
+            toast.success("Data STOP Tersimpan", {
+                description: `Sesi laporan untuk ${variables.storage_number} telah dihentikan.`,
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["processed-readings", variables.customer_code],
+            });
+            queryClient.invalidateQueries({ queryKey: ["readings"] });
+            options?.onSuccess?.();
+        },
+        onError: (error: Error) => {
+            toast.error("Gagal Menyimpan Data STOP", {
+                description: error.message || "Terjadi kesalahan. Coba lagi.",
+            });
+        },
+    });
 };
 
 // Hook untuk MENGUPDATE satu data reading
@@ -106,11 +106,10 @@ export const useUpdateReading = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: (reading: UpdateReading) => updateReading(reading),
-		onSuccess: () => {
+		onSuccess: (_, variables) => {
 			toast.success("Data berhasil diperbarui");
 			queryClient.invalidateQueries({ queryKey: ["readings"] });
-			// Invalidate juga data yang sudah diproses
-			queryClient.invalidateQueries({ queryKey: ["processed-readings"] });
+			queryClient.invalidateQueries({ queryKey: ["processed-readings", variables.customer_code] });
 		},
 		onError: (error: Error) => {
 			toast.error("Gagal memperbarui data", {
@@ -120,15 +119,14 @@ export const useUpdateReading = () => {
 	});
 };
 
-// Hook untuk MENGHAPUS satu data reading
+// Hook untuk MENGHAPUS satu data reading berdasarkan ID
 export const useDeleteReading = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: (id: number) => deleteReading(id),
 		onSuccess: () => {
-			// Tidak perlu toast di sini karena akan di-handle di BulkOperations
+			toast.success("Data berhasil dihapus"); // Tambahkan notifikasi sukses
 			queryClient.invalidateQueries({ queryKey: ["readings"] });
-			// Invalidate juga data yang sudah diproses
 			queryClient.invalidateQueries({ queryKey: ["processed-readings"] });
 		},
 		onError: (error: Error) => {

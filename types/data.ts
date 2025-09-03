@@ -58,7 +58,7 @@ export interface UpdateReadingPayload {
 // Parameter untuk fungsi update (butuh id di URL)
 export interface UpdateReading extends UpdateReadingPayload {
 	id: number;
-}
+	customer_code: string;}
 
 // Tipe data setelah flow_meter dihitung di client
 export interface ReadingWithFlowMeter extends ReadingFromDB {

@@ -17,8 +17,22 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { useProcessedReadingsByCustomer } from "@/hooks/use-readings";
-import { Loader2, Database, Pencil, Trash2 } from "lucide-react"; // 🔥 Tambahin Trash2
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+	useProcessedReadingsByCustomer,
+	useDeleteReading,
+} from "@/hooks/use-readings";
+import { Loader2, Database, Pencil, Trash2 } from "lucide-react";
 import type {
 	ReadingWithFlowMeter,
 	TableRowData,
@@ -37,6 +51,8 @@ export function DataTable({ customerCode }: DataTableProps) {
 		isLoading,
 		isError,
 	} = useProcessedReadingsByCustomer(customerCode);
+
+	const { mutate: deleteReading } = useDeleteReading();
 
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 	const [selectedReading, setSelectedReading] =
@@ -61,12 +77,8 @@ export function DataTable({ customerCode }: DataTableProps) {
 		setIsEditDialogOpen(true);
 	};
 
-	// 🔥 Handler untuk delete
-	const handleDeleteClick = (reading: ReadingWithFlowMeter) => {
-		if (confirm("Yakin mau hapus data ini?")) {
-			console.log("Delete reading", reading.id);
-			// TODO: panggil API delete di sini
-		}
+	const handleDeleteClick = (id: number) => {
+		deleteReading(id);
 	};
 
 	return (
@@ -256,28 +268,62 @@ export function DataTable({ customerCode }: DataTableProps) {
 										<TableCell className="text-sm max-w-[150px]">
 											{reading.remarks || "-"}
 										</TableCell>
-										<TableCell className="flex gap-2">
+										<TableCell>
 											{reading.is_editable && (
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={() =>
-														handleEditClick(reading)
-													}>
-													<Pencil className="h-4 w-4" />
-												</Button>
-											)}
-											{reading.is_deletable && (
-												<Button
-													variant="destructive"
-													size="sm"
-													onClick={() =>
-														handleDeleteClick(
-															reading
-														)
-													}>
-													<Trash2 className="h-4 w-4" />
-												</Button>
+												<div className="flex items-center gap-1">
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() =>
+															handleEditClick(
+																reading
+															)
+														}>
+														<Pencil className="h-4 w-4" />
+													</Button>
+													<AlertDialog>
+														<AlertDialogTrigger
+															asChild>
+															<Button
+																variant="outline"
+																size="sm"
+																className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+																<Trash2 className="h-4 w-4" />
+															</Button>
+														</AlertDialogTrigger>
+														<AlertDialogContent>
+															<AlertDialogHeader>
+																<AlertDialogTitle>
+																	Apakah Anda
+																	yakin?
+																</AlertDialogTitle>
+																<AlertDialogDescription>
+																	Tindakan ini
+																	akan
+																	menghapus
+																	data secara
+																	permanen.
+																	Anda tidak
+																	bisa
+																	mengurungkannya.
+																</AlertDialogDescription>
+															</AlertDialogHeader>
+															<AlertDialogFooter>
+																<AlertDialogCancel>
+																	Batal
+																</AlertDialogCancel>
+																<AlertDialogAction
+																	onClick={() =>
+																		handleDeleteClick(
+																			reading.id
+																		)
+																	}>
+																	Ya, Hapus
+																</AlertDialogAction>
+															</AlertDialogFooter>
+														</AlertDialogContent>
+													</AlertDialog>
+												</div>
 											)}
 										</TableCell>
 									</TableRow>
