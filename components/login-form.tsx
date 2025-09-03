@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export function LoginForm() {
 	const [email, setEmail] = useState("");
@@ -79,9 +80,8 @@ export function LoginForm() {
 					</div>
 					<div className="space-y-2">
 						<Label htmlFor="password">Password</Label>
-						<Input
+						<PasswordInput
 							id="password"
-							type="password"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							required
