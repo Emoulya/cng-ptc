@@ -1256,372 +1256,440 @@ export function AdminDataManagement() {
 												</TableCell>
 											</TableRow>
 										) : (
-											processedReadings.map((row) => {
-												if (
-													"isChangeRow" in row &&
-													row.isChangeRow
-												) {
-													return (
-														<TableRow
-															key={row.id}
-															className="bg-yellow-100 hover:bg-yellow-200 font-bold text-yellow-900">
-															<TableCell>
-																CHANGE
-															</TableCell>
-															<TableCell
-																colSpan={
-																	2
-																}></TableCell>
-															<TableCell>
-																{
-																	formatDateTime(
-																		row.recorded_at
-																	).date
-																}
-															</TableCell>
-															<TableCell>
-																{row.duration}
-															</TableCell>
-															<TableCell
-																colSpan={
-																	4
-																}></TableCell>
-															<TableCell>
-																{Math.round(
-																	row.totalFlow
-																)}
-															</TableCell>
-															<TableCell
-																colSpan={
-																	3
-																}></TableCell>
-														</TableRow>
-													);
-												}
-												if (
-													"isStopRow" in row &&
-													row.isStopRow
-												) {
-													const summary =
-														row as StopSummaryRow;
-													return (
-														<TableRow
-															key={summary.id}
-															className="bg-red-200 hover:bg-red-300 font-bold text-red-900">
-															<TableCell>
-																STOP
-															</TableCell>
-															<TableCell
-																colSpan={
-																	2
-																}></TableCell>
-															<TableCell>
-																{
-																	formatDateTime(
-																		summary.recorded_at
-																	).date
-																}
-															</TableCell>
-															<TableCell>
-																{
-																	summary.duration
-																}
-															</TableCell>
-															<TableCell
-																colSpan={
-																	4
-																}></TableCell>
-															<TableCell>
-																{Math.round(
-																	summary.totalFlow
-																)}
-															</TableCell>
-															<TableCell
-																colSpan={
-																	3
-																}></TableCell>
-														</TableRow>
-													);
-												}
-												if (
-													"isDumpingTotalRow" in row
-												) {
-													const summary =
-														row as DumpingTotalRow;
-													return (
-														<TableRow
-															key={summary.id}
-															className="bg-blue-200 hover:bg-blue-300 font-bold text-blue-900">
-															<TableCell>
-																TOTAL
-															</TableCell>
-															<TableCell></TableCell>
-															<TableCell>
-																{
-																	summary.storage_number
-																}
-															</TableCell>
-															<TableCell>
-																{
-																	formatDateTime(
-																		summary.recorded_at
-																	).date
-																}
-															</TableCell>
-															<TableCell>
-																{
-																	summary.duration
-																}
-															</TableCell>
-															<TableCell
-																colSpan={
-																	4
-																}></TableCell>
-															<TableCell>
-																{Math.round(
-																	summary.totalFlow
-																)}
-															</TableCell>
-															<TableCell
-																colSpan={
-																	3
-																}></TableCell>
-														</TableRow>
-													);
-												}
-												if (
-													"isDumpingSummary" in row &&
-													row.isDumpingSummary
-												) {
-													return (
-														<TableRow
-															key={row.id}
-															className="bg-blue-200 hover:bg-blue-300 font-bold text-blue-900">
-															<TableCell
-																colSpan={
-																	4
-																}></TableCell>
-															<TableCell>
-																{row.duration}
-															</TableCell>
-															<TableCell
-																colSpan={
-																	8
-																}></TableCell>
-														</TableRow>
-													);
-												}
+											<>
+												{processedReadings.map(
+													(row) => {
+														if (
+															"isChangeRow" in
+																row &&
+															row.isChangeRow
+														) {
+															return (
+																<TableRow
+																	key={row.id}
+																	className="bg-yellow-100 hover:bg-yellow-200 font-bold text-yellow-900">
+																	<TableCell>
+																		CHANGE
+																	</TableCell>
+																	<TableCell
+																		colSpan={
+																			2
+																		}></TableCell>
+																	<TableCell>
+																		{
+																			formatDateTime(
+																				row.recorded_at
+																			)
+																				.date
+																		}
+																	</TableCell>
+																	<TableCell>
+																		{
+																			row.duration
+																		}
+																	</TableCell>
+																	<TableCell
+																		colSpan={
+																			4
+																		}></TableCell>
+																	<TableCell>
+																		{Math.round(
+																			row.totalFlow
+																		)}
+																	</TableCell>
+																	<TableCell
+																		colSpan={
+																			3
+																		}></TableCell>
+																</TableRow>
+															);
+														}
+														if (
+															"isStopRow" in
+																row &&
+															row.isStopRow
+														) {
+															const summary =
+																row as StopSummaryRow;
+															return (
+																<TableRow
+																	key={
+																		summary.id
+																	}
+																	className="bg-red-200 hover:bg-red-300 font-bold text-red-900">
+																	<TableCell>
+																		STOP
+																	</TableCell>
+																	<TableCell
+																		colSpan={
+																			2
+																		}></TableCell>
+																	<TableCell>
+																		{
+																			formatDateTime(
+																				summary.recorded_at
+																			)
+																				.date
+																		}
+																	</TableCell>
+																	<TableCell>
+																		{
+																			summary.duration
+																		}
+																	</TableCell>
+																	<TableCell
+																		colSpan={
+																			4
+																		}></TableCell>
+																	<TableCell>
+																		{Math.round(
+																			summary.totalFlow
+																		)}
+																	</TableCell>
+																	<TableCell
+																		colSpan={
+																			3
+																		}></TableCell>
+																</TableRow>
+															);
+														}
+														if (
+															"isDumpingTotalRow" in
+															row
+														) {
+															const summary =
+																row as DumpingTotalRow;
+															return (
+																<TableRow
+																	key={
+																		summary.id
+																	}
+																	className="bg-blue-200 hover:bg-blue-300 font-bold text-blue-900">
+																	<TableCell>
+																		TOTAL
+																	</TableCell>
+																	<TableCell></TableCell>
+																	<TableCell>
+																		{
+																			summary.storage_number
+																		}
+																	</TableCell>
+																	<TableCell>
+																		{
+																			formatDateTime(
+																				summary.recorded_at
+																			)
+																				.date
+																		}
+																	</TableCell>
+																	<TableCell>
+																		{
+																			summary.duration
+																		}
+																	</TableCell>
+																	<TableCell
+																		colSpan={
+																			4
+																		}></TableCell>
+																	<TableCell>
+																		{Math.round(
+																			summary.totalFlow
+																		)}
+																	</TableCell>
+																	<TableCell
+																		colSpan={
+																			3
+																		}></TableCell>
+																</TableRow>
+															);
+														}
+														if (
+															"isDumpingSummary" in
+																row &&
+															row.isDumpingSummary
+														) {
+															return (
+																<TableRow
+																	key={row.id}
+																	className="bg-blue-200 hover:bg-blue-300 font-bold text-blue-900">
+																	<TableCell
+																		colSpan={
+																			4
+																		}></TableCell>
+																	<TableCell>
+																		{
+																			row.duration
+																		}
+																	</TableCell>
+																	<TableCell
+																		colSpan={
+																			8
+																		}></TableCell>
+																</TableRow>
+															);
+														}
 
-												const reading =
-													row as ReadingWithFlowMeter;
-												const { date, time } =
-													formatDateTime(
-														reading.recorded_at
-													);
-												return (
-													<TableRow key={reading.id}>
-														<TableCell>
-															<Badge variant="outline">
-																{
-																	reading.customer_code
-																}
-															</Badge>
-														</TableCell>
-														<TableCell className="font-semibold">
-															{
-																reading.fixed_storage_quantity
-															}
-														</TableCell>
-														<TableCell>
-															{
-																reading.storage_number
-															}
-														</TableCell>
-														<TableCell>
-															{date}
-														</TableCell>
-														<TableCell>
-															<HoverCard>
-																<HoverCardTrigger
-																	asChild>
-																	<span className="cursor-pointer underline decoration-dotted">
-																		{time}
-																	</span>
-																</HoverCardTrigger>
-																<HoverCardContent className="w-80">
-																	<div className="flex justify-between space-x-4">
-																		<Clock className="h-6 w-6 mt-1" />
-																		<div className="space-y-1">
-																			<h4 className="text-sm font-semibold">
-																				Waktu
-																				Submit
-																				Aktual
-																			</h4>
-																			<p className="text-sm">
-																				Data
-																				ini
-																				dicatat
-																				oleh
-																				sistem
-																				pada:
-																			</p>
-																			<div className="flex items-center pt-2">
-																				<span className="text-xs text-muted-foreground">
-																					{formatTimestampForHover(
-																						reading.created_at
-																					)}
-																				</span>
-																			</div>
-																		</div>
-																	</div>
-																</HoverCardContent>
-															</HoverCard>
-														</TableCell>
-														<TableCell>
-															{String(
-																reading.psi
-															)}
-														</TableCell>
-														<TableCell>
-															{String(
-																reading.temp
-															)}
-															°C
-														</TableCell>
-														<TableCell>
-															{String(
-																reading.psi_out
-															)}
-														</TableCell>
-														<TableCell>
-															{String(
-																reading.flow_turbine
-															)}
-														</TableCell>
-														<TableCell>
-															{reading.flowMeter}
-														</TableCell>
-														<TableCell>
-															{reading.profiles
-																?.username ||
-																"N/A"}
-														</TableCell>
-														<TableCell>
-															{reading.remarks ||
-																"-"}
-														</TableCell>
-														<TableCell>
-															<Dialog
-																open={
-																	isEditDialogOpen &&
-																	selectedReading?.id ===
-																		reading.id
-																}
-																onOpenChange={
-																	setIsEditDialogOpen
+														const reading =
+															row as ReadingWithFlowMeter;
+														const { date, time } =
+															formatDateTime(
+																reading.recorded_at
+															);
+														return (
+															<TableRow
+																key={
+																	reading.id
 																}>
-																<AlertDialog>
-																	<DropdownMenu>
-																		<DropdownMenuTrigger
-																			asChild>
-																			<Button
-																				variant="ghost"
-																				className="h-8 w-8 p-0">
-																				<span className="sr-only">
-																					Open
-																					menu
-																				</span>
-																				<MoreHorizontal className="h-4 w-4" />
-																			</Button>
-																		</DropdownMenuTrigger>
-																		<DropdownMenuContent align="end">
-																			<DialogTrigger
+																<TableCell>
+																	<Badge variant="outline">
+																		{
+																			reading.customer_code
+																		}
+																	</Badge>
+																</TableCell>
+																<TableCell className="font-semibold">
+																	{
+																		reading.fixed_storage_quantity
+																	}
+																</TableCell>
+																<TableCell>
+																	{
+																		reading.storage_number
+																	}
+																</TableCell>
+																<TableCell>
+																	{date}
+																</TableCell>
+																<TableCell>
+																	<Dialog>
+																		<HoverCard>
+																			<HoverCardTrigger
 																				asChild>
-																				<DropdownMenuItem
-																					onClick={() =>
-																						handleEditClick(
-																							reading
-																						)
-																					}>
-																					<Edit className="mr-2 h-4 w-4" />
-																					<span>
-																						Edit
+																				<DialogTrigger
+																					asChild>
+																					<span className="cursor-pointer underline decoration-dotted">
+																						{
+																							time
+																						}
 																					</span>
-																				</DropdownMenuItem>
-																			</DialogTrigger>
-																			<AlertDialogTrigger
-																				asChild>
-																				<DropdownMenuItem>
-																					<Trash2 className="mr-2 h-4 w-4" />
-																					<span>
-																						Hapus
-																					</span>
-																				</DropdownMenuItem>
-																			</AlertDialogTrigger>
-																		</DropdownMenuContent>
-																	</DropdownMenu>
-																	<AlertDialogContent>
-																		<AlertDialogHeader>
-																			<AlertDialogTitle>
-																				Apakah
-																				Anda
-																				yakin?
-																			</AlertDialogTitle>
-																			<AlertDialogDescription>
-																				Tindakan
-																				ini
-																				akan
-																				menghapus
-																				data
-																				secara
-																				permanen.
-																			</AlertDialogDescription>
-																		</AlertDialogHeader>
-																		<AlertDialogFooter>
-																			<AlertDialogCancel>
-																				Batal
-																			</AlertDialogCancel>
-																			<AlertDialogAction
-																				onClick={() =>
-																					handleDelete(
-																						reading.id
-																					)
-																				}>
-																				Ya,
-																				Hapus
-																			</AlertDialogAction>
-																		</AlertDialogFooter>
-																	</AlertDialogContent>
-																</AlertDialog>
-																<DialogContent>
-																	<DialogHeader>
-																		<DialogTitle>
-																			Edit
-																			Data
-																			Reading
-																		</DialogTitle>
-																	</DialogHeader>
-																	{selectedReading && (
-																		<EditReadingForm
-																			reading={
-																				selectedReading
-																			}
-																			onSuccess={() => {
-																				setIsEditDialogOpen(
-																					false
-																				);
-																				setSelectedReading(
-																					null
-																				);
-																			}}
-																		/>
+																				</DialogTrigger>
+																			</HoverCardTrigger>
+																			<HoverCardContent className="w-80">
+																				<div className="flex justify-between space-x-4">
+																					<Clock className="h-6 w-6 mt-1" />
+																					<div className="space-y-1">
+																						<h4 className="text-sm font-semibold">
+																							Waktu
+																							Submit
+																							Aktual
+																						</h4>
+																						<p className="text-sm">
+																							Data
+																							ini
+																							dicatat
+																							oleh
+																							sistem
+																							pada:
+																						</p>
+																						<div className="flex items-center pt-2">
+																							<span className="text-xs text-muted-foreground">
+																								{formatTimestampForHover(
+																									reading.created_at
+																								)}
+																							</span>
+																						</div>
+																					</div>
+																				</div>
+																			</HoverCardContent>
+																		</HoverCard>
+																		<DialogContent>
+																			<DialogHeader>
+																				<DialogTitle className="flex items-center gap-2">
+																					<Clock className="h-5 w-5" />
+																					Waktu
+																					Submit
+																					Aktual
+																				</DialogTitle>
+																				<DialogDescription>
+																					Informasi
+																					waktu
+																					detail
+																					kapan
+																					data
+																					ini
+																					direkam
+																					oleh
+																					sistem.
+																				</DialogDescription>
+																			</DialogHeader>
+																			<div className="py-4 font-mono text-center text-lg bg-gray-100 rounded-md p-4">
+																				{formatTimestampForHover(
+																					reading.created_at
+																				)}
+																			</div>
+																			<DialogFooter>
+																				<DialogClose
+																					asChild>
+																					<Button
+																						type="button"
+																						variant="secondary">
+																						Tutup
+																					</Button>
+																				</DialogClose>
+																			</DialogFooter>
+																		</DialogContent>
+																	</Dialog>
+																</TableCell>
+																<TableCell>
+																	{String(
+																		reading.psi
 																	)}
-																</DialogContent>
-															</Dialog>
-														</TableCell>
-													</TableRow>
-												);
-											})
+																</TableCell>
+																<TableCell>
+																	{String(
+																		reading.temp
+																	)}
+																	°C
+																</TableCell>
+																<TableCell>
+																	{String(
+																		reading.psi_out
+																	)}
+																</TableCell>
+																<TableCell>
+																	{String(
+																		reading.flow_turbine
+																	)}
+																</TableCell>
+																<TableCell>
+																	{
+																		reading.flowMeter
+																	}
+																</TableCell>
+																<TableCell>
+																	{reading
+																		.profiles
+																		?.username ||
+																		"N/A"}
+																</TableCell>
+																<TableCell>
+																	{reading.remarks ||
+																		"-"}
+																</TableCell>
+																<TableCell>
+																	<Dialog
+																		open={
+																			isEditDialogOpen &&
+																			selectedReading?.id ===
+																				reading.id
+																		}
+																		onOpenChange={
+																			setIsEditDialogOpen
+																		}>
+																		<AlertDialog>
+																			<DropdownMenu>
+																				<DropdownMenuTrigger
+																					asChild>
+																					<Button
+																						variant="ghost"
+																						className="h-8 w-8 p-0">
+																						<span className="sr-only">
+																							Open
+																							menu
+																						</span>
+																						<MoreHorizontal className="h-4 w-4" />
+																					</Button>
+																				</DropdownMenuTrigger>
+																				<DropdownMenuContent align="end">
+																					<DialogTrigger
+																						asChild>
+																						<DropdownMenuItem
+																							onClick={() =>
+																								handleEditClick(
+																									reading
+																								)
+																							}>
+																							<Edit className="mr-2 h-4 w-4" />
+																							<span>
+																								Edit
+																							</span>
+																						</DropdownMenuItem>
+																					</DialogTrigger>
+																					<AlertDialogTrigger
+																						asChild>
+																						<DropdownMenuItem>
+																							<Trash2 className="mr-2 h-4 w-4" />
+																							<span>
+																								Hapus
+																							</span>
+																						</DropdownMenuItem>
+																					</AlertDialogTrigger>
+																				</DropdownMenuContent>
+																			</DropdownMenu>
+																			<AlertDialogContent>
+																				<AlertDialogHeader>
+																					<AlertDialogTitle>
+																						Apakah
+																						Anda
+																						yakin?
+																					</AlertDialogTitle>
+																					<AlertDialogDescription>
+																						Tindakan
+																						ini
+																						akan
+																						menghapus
+																						data
+																						secara
+																						permanen.
+																					</AlertDialogDescription>
+																				</AlertDialogHeader>
+																				<AlertDialogFooter>
+																					<AlertDialogCancel>
+																						Batal
+																					</AlertDialogCancel>
+																					<AlertDialogAction
+																						onClick={() =>
+																							handleDelete(
+																								reading.id
+																							)
+																						}>
+																						Ya,
+																						Hapus
+																					</AlertDialogAction>
+																				</AlertDialogFooter>
+																			</AlertDialogContent>
+																		</AlertDialog>
+																		<DialogContent>
+																			<DialogHeader>
+																				<DialogTitle>
+																					Edit
+																					Data
+																					Reading
+																				</DialogTitle>
+																			</DialogHeader>
+																			{selectedReading && (
+																				<EditReadingForm
+																					reading={
+																						selectedReading
+																					}
+																					onSuccess={() => {
+																						setIsEditDialogOpen(
+																							false
+																						);
+																						setSelectedReading(
+																							null
+																						);
+																					}}
+																				/>
+																			)}
+																		</DialogContent>
+																	</Dialog>
+																</TableCell>
+															</TableRow>
+														);
+													}
+												)}
+											</>
 										)}
 									</TableBody>
 								</Table>
