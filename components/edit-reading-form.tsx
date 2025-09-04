@@ -16,6 +16,7 @@ import { useUpdateReading } from "@/hooks/use-readings";
 import { useStoragesForOperator } from "@/hooks/use-storages";
 import type { ReadingWithFlowMeter, UpdateReadingPayload } from "@/types/data";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 // Helper function untuk konversi UTC ke local datetime string
 const toLocalISOString = (date: Date) => {
@@ -41,10 +42,11 @@ interface EditReadingFormProps {
 }
 
 export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
+	const { user } = useAuth();
 	const [formData, setFormData] = useState({
 		storage_number: reading.storage_number,
 		fixed_storage_quantity: reading.fixed_storage_quantity,
-		created_at: toLocalISOString(new Date(reading.created_at)),
+		recorded_at: toLocalISOString(new Date(reading.recorded_at)),
 		psi: reading.psi,
 		temp: reading.temp,
 		psi_out: reading.psi_out,
@@ -72,15 +74,20 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 			psi_out: Number(formData.psi_out),
 			flow_turbine: Number(formData.flow_turbine),
 			remarks: formData.remarks,
-            storage_number: formData.storage_number,
-            fixed_storage_quantity: Number(formData.fixed_storage_quantity)
+			storage_number: formData.storage_number,
+			fixed_storage_quantity: Number(formData.fixed_storage_quantity),
 		};
+		if (user?.role === "admin") {
+			updateData.recorded_at = new Date(
+				formData.recorded_at
+			).toISOString();
+		}
 
 		updateReading(
 			{
-				id: reading.id, // untuk URL
+				id: reading.id,
 				customer_code: reading.customer_code,
-				...updateData, // untuk body
+				...updateData,
 			},
 			{
 				onSuccess: () => {
@@ -138,13 +145,20 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 				</div>
 			</div>
 			<div className="space-y-2">
-				<Label htmlFor="created_at">Date & Time</Label>
+				<Label htmlFor="recorded_at">Date & Time</Label>
 				<Input
-					id="created_at"
+					id="recorded_at"
 					type="datetime-local"
-					value={formData.created_at}
-					disabled
-					className="cursor-not-allowed bg-gray-100"
+					value={formData.recorded_at}
+					onChange={(e) =>
+						handleInputChange("recorded_at", e.target.value)
+					}
+					disabled={user?.role !== "admin"}
+					className={
+						user?.role !== "admin"
+							? "cursor-not-allowed bg-gray-100"
+							: ""
+					}
 				/>
 			</div>
 			<div className="grid grid-cols-2 gap-4">
