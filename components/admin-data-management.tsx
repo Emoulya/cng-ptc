@@ -282,15 +282,15 @@ export function AdminDataManagement() {
 					});
 				} else if (nextReading) {
 					if (nextReading.operation_type === "dumping") {
-						const endTimeStr = endTime.toLocaleTimeString("id-ID", {
-							hour: "2-digit",
-							minute: "2-digit",
-						});
+						// const endTimeStr = endTime.toLocaleTimeString("id-ID", {
+						// 	hour: "2-digit",
+						// 	minute: "2-digit",
+						// });
 						result.push({
 							id: `total-before-dump-${lastReadingInBlock.id}`,
 							isDumpingTotalRow: true,
 							totalFlow,
-							duration: endTimeStr,
+							duration: durationStr,
 							customer_code: lastReadingInBlock.customer_code,
 							recorded_at: lastReadingInBlock.recorded_at,
 							storage_number: lastReadingInBlock.storage_number,
@@ -464,20 +464,21 @@ export function AdminDataManagement() {
 							const endTime = new Date(
 								lastReadingInBlock.recorded_at
 							);
+							const diffMs =
+								endTime.getTime() - startTime.getTime();
+							const diffMinutes = Math.floor(diffMs / 60000);
+							const pad = (num: number) =>
+								String(num).padStart(2, "0");
+							const durationStr = `${pad(
+								Math.floor(diffMinutes / 60)
+							)}:${pad(diffMinutes % 60)}`;
 
 							if (nextReading.operation_type === "dumping") {
-								const endTimeStr = endTime.toLocaleTimeString(
-									"id-ID",
-									{
-										hour: "2-digit",
-										minute: "2-digit",
-									}
-								);
 								customerProcessedData.push({
 									id: `total-before-dump-${lastReadingInBlock.id}`,
 									isDumpingTotalRow: true,
 									totalFlow,
-									duration: endTimeStr,
+									duration: durationStr,
 									customer_code:
 										lastReadingInBlock.customer_code,
 									recorded_at: lastReadingInBlock.recorded_at,
@@ -490,14 +491,6 @@ export function AdminDataManagement() {
 								nextReading.storage_number !==
 									lastReadingInBlock.storage_number
 							) {
-								const diffMs =
-									endTime.getTime() - startTime.getTime();
-								const diffMinutes = Math.floor(diffMs / 60000);
-								const pad = (num: number) =>
-									String(num).padStart(2, "0");
-								const durationStr = `${pad(
-									Math.floor(diffMinutes / 60)
-								)}:${pad(diffMinutes % 60)}`;
 								customerProcessedData.push({
 									id: `change-${lastReadingInBlock.id}`,
 									isChangeRow: true,
