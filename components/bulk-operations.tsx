@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
 	Card,
 	CardContent,
@@ -23,9 +23,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Trash2, ShieldAlert, Loader2 } from "lucide-react";
-import { useAllReadings, useDeleteReading } from "@/hooks/use-readings";
+import {
+	useAllReadings,
+	useDeleteReading,
+	useDeleteReadingsByCustomer,
+} from "@/hooks/use-readings";
 import { deleteAllReadings } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { useCustomers } from "@/hooks/use-customers";
 
 export function BulkOperations() {
 	const queryClient = useQueryClient();
@@ -43,6 +55,36 @@ export function BulkOperations() {
 		useDeleteReading();
 	const [selectedItems, setSelectedItems] = useState<number[]>([]);
 	const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+	const [customerToDelete, setCustomerToDelete] = useState<string>("");
+	const { data: customers = [] } = useCustomers();
+	const { mutate: deleteByCustomer, isPending: isDeletingByCustomer } =
+		useDeleteReadingsByCustomer();
+
+	const customersWithReadings = useMemo(() => {
+		if (allReadings.length === 0 || customers.length === 0) {
+			return [];
+		}
+		const customerCodesWithData = new Set(
+			allReadings.map((r) => r.customer_code)
+		);
+		return customers.filter((c) => customerCodesWithData.has(c.code));
+	}, [allReadings, customers]);
+
+	const handleClearByCustomer = () => {
+		if (!customerToDelete) {
+			toast.warning("Customer belum dipilih", {
+				description:
+					"Silakan pilih Customer yang datanya ingin dihapus.",
+			});
+			return;
+		}
+		deleteByCustomer(customerToDelete, {
+			onSuccess: () => {
+				setCustomerToDelete(""); // Reset dropdown setelah berhasil
+			},
+		});
+	};
 
 	const handleSelectAll = (checked: boolean) => {
 		setSelectedItems(checked ? allReadings.map((item) => item.id) : []);
@@ -252,6 +294,79 @@ export function BulkOperations() {
 										</AlertDialogFooter>
 									</AlertDialogContent>
 								</AlertDialog>
+							</div>
+							<div className="pt-4 border-t">
+								<p className="text-sm font-medium mb-2">
+									Hapus Semua Data Berdasarkan Customer
+								</p>
+								<div className="flex gap-3">
+									<Select
+										value={customerToDelete}
+										onValueChange={setCustomerToDelete}>
+										<SelectTrigger className="flex-1">
+											<SelectValue placeholder="Pilih Customer..." />
+										</SelectTrigger>
+										<SelectContent>
+											{customersWithReadings.map((c) => (
+												<SelectItem
+													key={c.id}
+													value={c.code}>
+													{c.name || c.code}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<AlertDialog>
+										<AlertDialogTrigger asChild>
+											<Button
+												variant="destructive"
+												disabled={
+													!customerToDelete ||
+													isProcessing
+												}>
+												{isDeletingByCustomer ? (
+													<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+												) : (
+													<Trash2 className="h-4 w-4 mr-2" />
+												)}
+												Hapus Data Customer
+											</Button>
+										</AlertDialogTrigger>
+										<AlertDialogContent>
+											<AlertDialogHeader>
+												<AlertDialogTitle>
+													Apakah Anda benar-benar
+													yakin?
+												</AlertDialogTitle>
+												<AlertDialogDescription>
+													Tindakan ini akan menghapus{" "}
+													<span className="font-bold">
+														SEMUA
+													</span>{" "}
+													data monitoring untuk
+													Customer{" "}
+													<span className="font-bold">
+														{customerToDelete}
+													</span>{" "}
+													secara permanen. Tindakan
+													ini tidak dapat dibatalkan.
+												</AlertDialogDescription>
+											</AlertDialogHeader>
+											<AlertDialogFooter>
+												<AlertDialogCancel>
+													Batal
+												</AlertDialogCancel>
+												<AlertDialogAction
+													onClick={
+														handleClearByCustomer
+													}>
+													Ya, Hapus Semua Data{" "}
+													{customerToDelete}
+												</AlertDialogAction>
+											</AlertDialogFooter>
+										</AlertDialogContent>
+									</AlertDialog>
+								</div>
 							</div>
 						</>
 					)}

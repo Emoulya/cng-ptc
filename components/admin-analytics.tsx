@@ -108,9 +108,9 @@ export function AdminAnalytics() {
 
 			<Card>
 				<CardHeader>
-					<CardTitle>Pelanggan Paling Aktif</CardTitle>
+					<CardTitle>Customer Paling Aktif</CardTitle>
 					<CardDescription>
-						Pelanggan dengan jumlah entri data terbanyak
+						Customer dengan jumlah entri data terbanyak
 					</CardDescription>
 				</CardHeader>
 				<CardContent>

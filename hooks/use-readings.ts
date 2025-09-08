@@ -10,7 +10,8 @@ import {
 	updateReading,
 	addDumpingReading,
 	getProcessedReadingsByCustomer,
-    addStopReading,
+	addStopReading,
+	deleteReadingsByCustomer,
 } from "@/lib/api";
 import type { ReadingFilters } from "@/lib/api";
 import { toast } from "sonner";
@@ -19,13 +20,13 @@ import type {
 	UpdateReading,
 	NewDumpingData,
 	TableRowData,
-    NewStopReading,
+	NewStopReading,
 } from "@/types/data";
 
 // Hook untuk mendapatkan data yang sudah diproses dari backend
 export const useProcessedReadingsByCustomer = (
-    customerCode: string,
-    timeRange: 'day' | 'week' | 'month' | 'all'
+	customerCode: string,
+	timeRange: "day" | "week" | "month" | "all"
 ) => {
 	return useQuery<TableRowData[]>({
 		queryKey: ["processed-readings", customerCode, timeRange],
@@ -83,25 +84,26 @@ export const useAddReading = (options?: { onSuccess?: () => void }) => {
 
 // Hook untuk MENAMBAH data STOP baru
 export const useAddStopReading = (options?: { onSuccess?: () => void }) => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (stopReading: NewStopReading) => addStopReading(stopReading),
-        onSuccess: (_, variables) => {
-            toast.success("Data STOP Tersimpan", {
-                description: `Sesi laporan untuk ${variables.storage_number} telah dihentikan.`,
-            });
-            queryClient.invalidateQueries({
-                queryKey: ["processed-readings", variables.customer_code],
-            });
-            queryClient.invalidateQueries({ queryKey: ["readings"] });
-            options?.onSuccess?.();
-        },
-        onError: (error: Error) => {
-            toast.error("Gagal Menyimpan Data STOP", {
-                description: error.message || "Terjadi kesalahan. Coba lagi.",
-            });
-        },
-    });
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (stopReading: NewStopReading) =>
+			addStopReading(stopReading),
+		onSuccess: (_, variables) => {
+			toast.success("Data STOP Tersimpan", {
+				description: `Sesi laporan untuk ${variables.storage_number} telah dihentikan.`,
+			});
+			queryClient.invalidateQueries({
+				queryKey: ["processed-readings", variables.customer_code],
+			});
+			queryClient.invalidateQueries({ queryKey: ["readings"] });
+			options?.onSuccess?.();
+		},
+		onError: (error: Error) => {
+			toast.error("Gagal Menyimpan Data STOP", {
+				description: error.message || "Terjadi kesalahan. Coba lagi.",
+			});
+		},
+	});
 };
 
 // Hook untuk MENGUPDATE satu data reading
@@ -112,10 +114,32 @@ export const useUpdateReading = () => {
 		onSuccess: (_, variables) => {
 			toast.success("Data berhasil diperbarui");
 			queryClient.invalidateQueries({ queryKey: ["readings"] });
-			queryClient.invalidateQueries({ queryKey: ["processed-readings", variables.customer_code] });
+			queryClient.invalidateQueries({
+				queryKey: ["processed-readings", variables.customer_code],
+			});
 		},
 		onError: (error: Error) => {
 			toast.error("Gagal memperbarui data", {
+				description: error.message,
+			});
+		},
+	});
+};
+
+export const useDeleteReadingsByCustomer = () => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (customerCode: string) =>
+			deleteReadingsByCustomer(customerCode),
+		onSuccess: (_, customerCode) => {
+			toast.success("Data Berhasil Dihapus", {
+				description: `Semua data untuk Customer ${customerCode} telah dihapus.`,
+			});
+			queryClient.invalidateQueries({ queryKey: ["readings"] });
+			queryClient.invalidateQueries({ queryKey: ["processed-readings"] });
+		},
+		onError: (error: Error) => {
+			toast.error("Gagal Menghapus Data", {
 				description: error.message,
 			});
 		},

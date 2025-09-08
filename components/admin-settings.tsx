@@ -8,7 +8,7 @@ import { UserManagement } from "./user-management";
 export function AdminSettings() {
 	return (
 		<div className="space-y-8">
-			{/* Bagian Manajemen Pelanggan */}
+			{/* Bagian Manajemen Customer */}
 			<CustomerManagement />
 
 			{/* Bagian Manajemen Storage */}

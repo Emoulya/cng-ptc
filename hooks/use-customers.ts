@@ -26,7 +26,7 @@ export const useAddCustomer = () => {
 			addCustomer(customer),
 		onSuccess: (_, variables) => {
 			toast.success(
-				`Pelanggan ${variables.code.toUpperCase()} berhasil ditambahkan`
+				`Customer ${variables.code.toUpperCase()} berhasil ditambahkan`
 			);
 			queryClient.invalidateQueries({ queryKey: ["customers"] });
 		},
@@ -40,11 +40,11 @@ export const useAddCustomer = () => {
 				)
 			) {
 				description =
-					"Kode pelanggan sudah ada. Harap gunakan kode lain.";
+					"Kode Customer sudah ada. Harap gunakan kode lain.";
 			} else if (error.message) {
 				description = error.message;
 			}
-			toast.error("Gagal menambah pelanggan", {
+			toast.error("Gagal menambah Customer", {
 				description: description,
 			});
 		},
@@ -58,7 +58,7 @@ export const useUpdateCustomer = () => {
 		mutationFn: (customer: UpdateCustomer) => updateCustomer(customer),
 		onSuccess: (_, variables) => {
 			toast.success(
-				`Pelanggan ${variables.code?.toUpperCase()} berhasil diperbarui`
+				`Customer ${variables.code?.toUpperCase()} berhasil diperbarui`
 			);
 			queryClient.invalidateQueries({ queryKey: ["customers"] });
 		},
@@ -71,11 +71,11 @@ export const useUpdateCustomer = () => {
 				)
 			) {
 				description =
-					"Kode pelanggan sudah ada. Harap gunakan kode lain.";
+					"Kode Customer sudah ada. Harap gunakan kode lain.";
 			} else if (error.message) {
 				description = error.message;
 			}
-			toast.error("Gagal memperbarui pelanggan", {
+			toast.error("Gagal memperbarui Customer", {
 				description: description,
 			});
 		},
@@ -88,11 +88,11 @@ export const useDeleteCustomer = () => {
 	return useMutation({
 		mutationFn: (id: number) => deleteCustomer(id),
 		onSuccess: () => {
-			toast.success("Pelanggan berhasil dihapus");
+			toast.success("Customer berhasil dihapus");
 			queryClient.invalidateQueries({ queryKey: ["customers"] });
 		},
 		onError: (error: Error) => {
-			toast.error("Gagal menghapus pelanggan", {
+			toast.error("Gagal menghapus Customer", {
 				description: error.message,
 			});
 		},

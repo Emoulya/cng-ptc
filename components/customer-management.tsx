@@ -67,11 +67,11 @@ export function CustomerManagement() {
 	);
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-	// Handler untuk menambah pelanggan baru
+	// Handler untuk menambah Customer baru
 	const handleAddCustomer = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!newCustomerCode) {
-			toast.warning("Kode Pelanggan harus diisi");
+			toast.warning("Kode Customer harus diisi");
 			return;
 		}
 		addCustomer(
@@ -85,12 +85,12 @@ export function CustomerManagement() {
 		);
 	};
 
-	// Handler untuk menghapus pelanggan
+	// Handler untuk menghapus Customer
 	const handleDeleteCustomer = (id: number) => {
 		deleteCustomer(id);
 	};
 
-	// Handler untuk memperbarui pelanggan
+	// Handler untuk memperbarui Customer
 	const handleUpdateCustomer = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!editingCustomer) return;
@@ -115,9 +115,9 @@ export function CustomerManagement() {
 			{/* Kolom Formulir Tambah */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Tambah Pelanggan Baru</CardTitle>
+					<CardTitle>Tambah Customer Baru</CardTitle>
 					<CardDescription>
-						Masukkan data untuk pelanggan baru.
+						Masukkan data untuk Customer baru.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -126,7 +126,7 @@ export function CustomerManagement() {
 						className="space-y-4">
 						<div className="space-y-2">
 							<Label htmlFor="customerCode">
-								Kode Pelanggan (Singkat)
+								Kode Customer (Singkat)
 							</Label>
 							<Input
 								id="customerCode"
@@ -140,7 +140,7 @@ export function CustomerManagement() {
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="customerName">
-								Nama Lengkap Pelanggan (Opsional)
+								Nama Lengkap Customer (Opsional)
 							</Label>
 							<Input
 								id="customerName"
@@ -160,7 +160,7 @@ export function CustomerManagement() {
 							) : (
 								<PlusCircle className="mr-2" />
 							)}
-							Tambah Pelanggan
+							Tambah Customer
 						</Button>
 					</form>
 				</CardContent>
@@ -169,9 +169,9 @@ export function CustomerManagement() {
 			{/* Kolom Tabel */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Daftar Pelanggan</CardTitle>
+					<CardTitle>Daftar Customer</CardTitle>
 					<CardDescription>
-						Total: {customers.length} pelanggan
+						Total: {customers.length} Customer
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="h-96 overflow-y-auto">
@@ -225,7 +225,7 @@ export function CustomerManagement() {
 												<DialogContent>
 													<DialogHeader>
 														<DialogTitle>
-															Edit Pelanggan:{" "}
+															Edit Customer:{" "}
 															{
 																editingCustomer?.code
 															}
@@ -315,7 +315,7 @@ export function CustomerManagement() {
 														</AlertDialogTitle>
 														<AlertDialogDescription>
 															Tindakan ini akan
-															menghapus pelanggan{" "}
+															menghapus Customer{" "}
 															<span className="font-bold">
 																{c.code}
 															</span>{" "}

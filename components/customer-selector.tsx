@@ -30,8 +30,8 @@ export function CustomerSelector({ value, onChange }: CustomerSelectorProps) {
 						<SelectValue
 							placeholder={
 								isLoading
-									? "Memuat pelanggan..."
-									: "Pilih pelanggan..."
+									? "Memuat Customer..."
+									: "Pilih Customer..."
 							}
 						/>
 					</div>

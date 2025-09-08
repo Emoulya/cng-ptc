@@ -189,6 +189,19 @@ export const deleteAllReadings = async (): Promise<void> => {
 	return handleResponse(response);
 };
 
+export const deleteReadingsByCustomer = async (
+	customerCode: string
+): Promise<void> => {
+	const response = await fetch(
+		`${process.env.NEXT_PUBLIC_API_URL}/readings/by-customer/${customerCode}`,
+		{
+			method: "DELETE",
+			headers: getAuthHeaders(),
+		}
+	);
+	return handleResponse(response);
+};
+
 // === API Functions for Customers ===
 
 export const getCustomers = async (): Promise<Customer[]> => {

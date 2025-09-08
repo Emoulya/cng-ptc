@@ -369,7 +369,7 @@ export function AdminDataManagement() {
 	// --- FUNGSI EKSPOR DIPERBARUI ---
 	const handleExport = async () => {
 		if (selectedCustomersForExport.length === 0) {
-			toast.warning("Tidak ada pelanggan yang dipilih untuk diekspor.");
+			toast.warning("Tidak ada Customer yang dipilih untuk diekspor.");
 			return;
 		}
 		setIsExporting(true);
@@ -1094,10 +1094,10 @@ export function AdminDataManagement() {
 									<DialogContent>
 										<DialogHeader>
 											<DialogTitle>
-												Pilih Pelanggan untuk Diekspor
+												Pilih Customer untuk Diekspor
 											</DialogTitle>
 											<DialogDescription>
-												Pilih satu atau lebih pelanggan
+												Pilih satu atau lebih Customer
 												dari daftar di bawah ini untuk
 												dimasukkan ke dalam file
 												laporan.

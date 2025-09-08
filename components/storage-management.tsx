@@ -90,7 +90,7 @@ export function StorageManagement() {
 			(!selectedCustomerCode || !defaultQuantity)
 		) {
 			toast.warning(
-				"Untuk storage 'fixed', Pelanggan dan Jumlah Bawaan harus diisi."
+				"Untuk storage 'fixed', Customer dan Jumlah Bawaan harus diisi."
 			);
 			return;
 		}
@@ -131,7 +131,7 @@ export function StorageManagement() {
 			(!editingStorage.customer_code || !editingStorage.default_quantity)
 		) {
 			toast.warning(
-				"Untuk storage 'fixed', Pelanggan dan Jumlah Bawaan harus diisi."
+				"Untuk storage 'fixed', Customer dan Jumlah Bawaan harus diisi."
 			);
 			return;
 		}
@@ -207,13 +207,13 @@ export function StorageManagement() {
 							<>
 								<div className="space-y-2">
 									<Label htmlFor="customerCode">
-										Pelanggan (Pemilik)
+										Customer (Pemilik)
 									</Label>
 									<Select
 										value={selectedCustomerCode}
 										onValueChange={setSelectedCustomerCode}>
 										<SelectTrigger>
-											<SelectValue placeholder="Pilih pelanggan..." />
+											<SelectValue placeholder="Pilih Customer..." />
 										</SelectTrigger>
 										<SelectContent>
 											{customers.map((c) => (
@@ -274,7 +274,7 @@ export function StorageManagement() {
 								<TableRow>
 									<TableHead>Nomor</TableHead>
 									<TableHead>Tipe</TableHead>
-									<TableHead>Pelanggan</TableHead>
+									<TableHead>Customer</TableHead>
 									<TableHead>Jumlah</TableHead>
 									<TableHead>Aksi</TableHead>
 								</TableRow>
@@ -406,7 +406,7 @@ export function StorageManagement() {
 																	<>
 																		<div className="space-y-2">
 																			<Label htmlFor="editCustomerCode">
-																				Pelanggan
+																				Customer
 																			</Label>
 																			<Select
 																				value={
