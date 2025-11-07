@@ -263,7 +263,14 @@ export function DataTable({ customerCode, timeRange }: DataTableProps) {
 										<TableCell>
 											{String(reading.flow_turbine)}
 										</TableCell>
-										<TableCell>
+										<TableCell
+											className={
+												typeof reading.flowMeter ===
+													"number" &&
+												reading.flowMeter < 0
+													? "text-red-600 font-medium"
+													: ""
+											}>
 											{reading.flowMeter}
 										</TableCell>
 										<TableCell className="text-sm max-w-[150px]">

@@ -45,12 +45,12 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 	const { user } = useAuth();
 	const [formData, setFormData] = useState({
 		storage_number: reading.storage_number,
-		fixed_storage_quantity: reading.fixed_storage_quantity,
+		fixed_storage_quantity: String(reading.fixed_storage_quantity),
 		recorded_at: toLocalISOString(new Date(reading.recorded_at)),
-		psi: reading.psi,
-		temp: reading.temp,
-		psi_out: reading.psi_out,
-		flow_turbine: reading.flow_turbine,
+		psi: String(reading.psi),
+		temp: String(reading.temp),
+		psi_out: String(reading.psi_out),
+		flow_turbine: String(reading.flow_turbine),
 		remarks: reading.remarks ?? "",
 	});
 
@@ -138,7 +138,7 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 						onChange={(e) =>
 							handleInputChange(
 								"fixed_storage_quantity",
-								Number(e.target.value)
+								e.target.value
 							)
 						}
 					/>
@@ -170,7 +170,7 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 						step="0.1"
 						value={formData.psi}
 						onChange={(e) =>
-							handleInputChange("psi", Number(e.target.value))
+							handleInputChange("psi", e.target.value)
 						}
 					/>
 				</div>
@@ -182,7 +182,7 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 						step="0.1"
 						value={formData.temp}
 						onChange={(e) =>
-							handleInputChange("temp", Number(e.target.value))
+							handleInputChange("temp", e.target.value)
 						}
 					/>
 				</div>
@@ -194,7 +194,7 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 						step="0.1"
 						value={formData.psi_out}
 						onChange={(e) =>
-							handleInputChange("psi_out", Number(e.target.value))
+							handleInputChange("psi_out", e.target.value)
 						}
 					/>
 				</div>
@@ -208,7 +208,7 @@ export function EditReadingForm({ reading, onSuccess }: EditReadingFormProps) {
 						onChange={(e) =>
 							handleInputChange(
 								"flow_turbine",
-								Number(e.target.value)
+								e.target.value
 							)
 						}
 					/>

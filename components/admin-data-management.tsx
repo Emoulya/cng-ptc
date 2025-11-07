@@ -29,6 +29,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkOperations } from "@/components/bulk-operations";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase-client";
 import {
 	HoverCard,
 	HoverCardContent,
@@ -114,6 +116,7 @@ export function AdminDataManagement() {
 
 	const [isExporting, setIsExporting] = useState(false);
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
+	const queryClient = useQueryClient();
 
 	const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 	const [selectedCustomersForExport, setSelectedCustomersForExport] =
@@ -217,7 +220,7 @@ export function AdminDataManagement() {
 				const diff =
 					Number(current.flow_turbine) -
 					Number(previous.flow_turbine);
-				flowMeter = isNaN(diff) || diff < 0 ? "-" : diff;
+				flowMeter = isNaN(diff) ? "-" : diff;
 			}
 
 			return { ...current, flowMeter };
@@ -361,6 +364,49 @@ export function AdminDataManagement() {
 		}
 		return result;
 	}, [readings]);
+
+	// EFEK UNTUK REALTIME LISTENER
+	useEffect(() => {
+		// user sudah terautentikasi
+		const token = localStorage.getItem("access_token");
+		if (!token) {
+			console.warn(
+				"Realtime listener: Tidak ada token, tidak bisa subscribe."
+			);
+			return;
+		}
+		supabase.auth.setSession({
+			access_token: token,
+			refresh_token: token,
+		});
+
+		// Buat channel Supabase untuk mendengarkan tabel 'readings'
+		const channel = supabase
+			.channel("public:readings")
+			.on(
+				"postgres_changes",
+				{ event: "*", schema: "public", table: "readings" },
+				(payload) => {
+					console.log("Perubahan realtime terdeteksi!", payload);
+
+					// React Query untuk memuat ulang (refetch)
+					queryClient.invalidateQueries({ queryKey: ["readings"] });
+				}
+			)
+			.subscribe((status, err) => {
+				if (status === "SUBSCRIBED") {
+					console.log(
+						"Tersambung ke Supabase Realtime (sebagai user terautentikasi) untuk tabel readings!"
+					);
+				}
+				if (status === "CHANNEL_ERROR") {
+					console.error("Koneksi Realtime Gagal:", err);
+				}
+			});
+		return () => {
+			supabase.removeChannel(channel);
+		};
+	}, [queryClient]);
 
 	const handleDelete = (id: number) => {
 		deleteReading(id);
@@ -1554,7 +1600,15 @@ export function AdminDataManagement() {
 																		reading.flow_turbine
 																	)}
 																</TableCell>
-																<TableCell>
+																<TableCell
+																	className={
+																		typeof reading.flowMeter ===
+																			"number" &&
+																		reading.flowMeter <
+																			0
+																			? "text-red-600 font-medium"
+																			: ""
+																	}>
 																	{
 																		reading.flowMeter
 																	}
