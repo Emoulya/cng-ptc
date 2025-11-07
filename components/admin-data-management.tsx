@@ -924,7 +924,7 @@ export function AdminDataManagement() {
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">
-							Active Operators
+							Operator Aktif
 						</CardTitle>
 						<Activity className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
@@ -937,7 +937,7 @@ export function AdminDataManagement() {
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">
-							Today&apos;s Readings
+							Readings Hari ini
 						</CardTitle>
 						<Database className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
@@ -1072,10 +1072,10 @@ export function AdminDataManagement() {
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="asc">
-											Terlama (Asc)
+											Terbaru (Desc)
 										</SelectItem>
 										<SelectItem value="desc">
-											Terbaru (Desc)
+											Terlama (Asc)
 										</SelectItem>
 									</SelectContent>
 								</Select>
