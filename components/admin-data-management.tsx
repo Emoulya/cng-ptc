@@ -112,7 +112,7 @@ export function AdminDataManagement() {
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 	const [timeRange, setTimeRange] = useState<
 		"day" | "week" | "month" | "all"
-	>("week");
+	>("day");
 
 	const [isExporting, setIsExporting] = useState(false);
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -412,7 +412,7 @@ export function AdminDataManagement() {
 		deleteReading(id);
 	};
 
-	// --- FUNGSI EKSPOR DIPERBARUI ---
+	// --- FUNGSI EKSPOR ---
 	const handleExport = async () => {
 		if (selectedCustomersForExport.length === 0) {
 			toast.warning("Tidak ada Customer yang dipilih untuk diekspor.");
@@ -627,7 +627,6 @@ export function AdminDataManagement() {
 						i++;
 					}
 				}
-				// --- END LOGIKA PEMROSESAN ---
 
 				let lastSpecialRowIndex = 9;
 
@@ -639,7 +638,8 @@ export function AdminDataManagement() {
 						if (
 							("isChangeRow" in row && row.isChangeRow) ||
 							"isDumpingTotalRow" in row ||
-							("isStopRow" in row && row.isStopRow)
+							("isStopRow" in row && row.isStopRow) ||
+							"isDumpingSummary" in row
 						) {
 							const startRow = lastSpecialRowIndex + 1;
 							const endRow = currentRow - 1;
@@ -684,6 +684,7 @@ export function AdminDataManagement() {
 								E: 1,
 								H: row.duration,
 								N: { t: "s", v: "" },
+								O: { t: "n", f: formulaForO },
 							};
 						}
 
@@ -745,7 +746,7 @@ export function AdminDataManagement() {
 					skipHeader: true,
 				});
 
-				// --- MODIFIKASI STYLE DI SINI ---
+				// --- MODIFIKASI STYLE ---
 				const baseStyle = {
 					border: {
 						top: { style: "thin", color: { rgb: "000000" } },
@@ -929,7 +930,7 @@ export function AdminDataManagement() {
 		}
 	};
 
-	// --- HANDLER BARU UNTUK CHECKBOX ---
+	// --- HANDLER UNTUK CHECKBOX ---
 	const handleExportCustomerSelection = (
 		customerCode: string,
 		isChecked: boolean
