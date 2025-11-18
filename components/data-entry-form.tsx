@@ -27,6 +27,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useAddReading } from "@/hooks/use-readings";
 import { useStoragesForOperator } from "@/hooks/use-storages";
 import type { Storage } from "@/types/data";
+import { dataEntrySchema, type TDataEntrySchema } from "@/lib/schemas";
 import {
 	Clock,
 	Thermometer,
@@ -37,12 +38,16 @@ import {
 	Save,
 	Truck,
 	Building,
+	AlertCircle,
 } from "lucide-react";
 
 interface DataEntryFormProps {
 	customerCode: string;
 	onSuccess?: () => void;
 }
+
+// Tipe untuk error messages per field
+type FieldErrors = Partial<Record<keyof TDataEntrySchema, string>>;
 
 export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 	const { user } = useAuth();
@@ -60,6 +65,10 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		flowTurbine: "",
 		remarks: "",
 	});
+
+	// State untuk validation errors
+	const [errors, setErrors] = useState<FieldErrors>({});
+
 	const [selectedStorage, setSelectedStorage] = useState<Storage | null>(
 		null
 	);
@@ -86,6 +95,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				remarks: "",
 			});
 			setSelectedStorage(null);
+			setErrors({}); // Clear errors on success
 		},
 	});
 
@@ -103,6 +113,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		});
 		setSelectedStorage(null);
 		lastSubmittedStorage.current = null;
+		setErrors({});
 	}, [customerCode]);
 
 	// Efek untuk mengisi jumlah storage otomatis
@@ -123,6 +134,10 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 
 	const handleInputChange = (field: string, value: string) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
+		// ini buat hapus error pas user mulai ngetik
+		if (errors[field as keyof TDataEntrySchema]) {
+			setErrors((prev) => ({ ...prev, [field]: undefined }));
+		}
 	};
 
 	const handleStorageChange = (storageNumber: string) => {
@@ -135,35 +150,38 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!user) {
-			toast.error("Authentication Error");
-			return;
-		}
-
-		// Validasi form
-		const requiredFields = [
-			"recordingTime",
-			"storageNumber",
-			"fixedStorageQuantity",
-			"psi",
-			"temp",
-			"psiOut",
-			"flowTurbine",
-		];
-		if (
-			requiredFields.some(
-				(field) => !formData[field as keyof typeof formData]
-			)
-		) {
-			toast.error("Validation Error", {
-				description: "Mohon isi semua field yang ditandai bintang (*)",
+			toast.error("Authentication Error", {
+				description: "Anda harus login terlebih dahulu",
 			});
 			return;
 		}
 
+		// Validasi menggunakan Zod schema
+		const validationResult = dataEntrySchema.safeParse(formData);
+
+		if (!validationResult.success) {
+			const fieldErrors: FieldErrors = {};
+			validationResult.error.issues.forEach((issue) => {
+				const fieldName = issue.path[0] as keyof TDataEntrySchema;
+				if (fieldName) {
+					fieldErrors[fieldName] = issue.message;
+				}
+			});
+			setErrors(fieldErrors);
+			
+			toast.error("Validasi Gagal", {
+				description: "Mohon perbaiki field yang ditandai merah",
+			});
+			return;
+		}
+
+		// Data sudah valid, lanjutkan proses submit
+		const validatedData = validationResult.data;
+
 		// Fungsi untuk memproses dan mengirim data
 		const processAndSubmit = () => {
 			const localDate = new Date();
-			const [hour, minute] = formData.recordingTime.split(":");
+			const [hour, minute] = validatedData.recordingTime.split(":");
 
 			const recordedDate = new Date(
 				localDate.getFullYear(),
@@ -180,13 +198,13 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 				recorded_at: finalTimestamp,
 				customer_code: customerCode,
 				operator_id: user.id,
-				storage_number: formData.storageNumber,
-				fixed_storage_quantity: parseInt(formData.fixedStorageQuantity),
-				psi: parseFloat(formData.psi),
-				temp: parseFloat(formData.temp),
-				psi_out: parseFloat(formData.psiOut),
-				flow_turbine: parseFloat(formData.flowTurbine),
-				remarks: formData.remarks,
+				storage_number: validatedData.storageNumber,
+				fixed_storage_quantity: validatedData.fixedStorageQuantity,
+				psi: validatedData.psi,
+				temp: validatedData.temp,
+				psi_out: validatedData.psiOut,
+				flow_turbine: validatedData.flowTurbine,
+				remarks: validatedData.remarks || "",
 			};
 
 			lastSubmittedStorage.current = submissionData.storage_number;
@@ -196,7 +214,7 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 		// Cek apakah perlu konfirmasi perubahan storage
 		if (
 			lastSubmittedStorage.current &&
-			formData.storageNumber !== lastSubmittedStorage.current
+			validatedData.storageNumber !== lastSubmittedStorage.current
 		) {
 			setConfirmAction(() => processAndSubmit);
 			setIsConfirmDialogOpen(true);
@@ -223,7 +241,12 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 							value={formData.storageNumber}
 							onValueChange={handleStorageChange}
 							disabled={isLoadingStorages}>
-							<SelectTrigger className="h-12">
+							<SelectTrigger
+								className={`h-12 ${
+									errors.storageNumber
+										? "border-red-500 focus:ring-red-500"
+										: ""
+								}`}>
 								<SelectValue placeholder="Pilih nomor storage..." />
 							</SelectTrigger>
 							<SelectContent>
@@ -250,6 +273,12 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 								))}
 							</SelectContent>
 						</Select>
+						{errors.storageNumber && (
+							<p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+								<AlertCircle className="h-4 w-4" />
+								{errors.storageNumber}
+							</p>
+						)}
 					</div>
 
 					{/* Input Waktu */}
@@ -271,9 +300,18 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 									e.target.value
 								)
 							}
-							className="h-12 text-base"
-							required
+							className={`h-12 text-base ${
+								errors.recordingTime
+									? "border-red-500 focus:ring-red-500"
+									: ""
+							}`}
 						/>
+						{errors.recordingTime && (
+							<p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+								<AlertCircle className="h-4 w-4" />
+								{errors.recordingTime}
+							</p>
+						)}
 					</div>
 
 					{/* Measurement Fields Grid */}
@@ -296,8 +334,18 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 								onChange={(e) =>
 									handleInputChange("psi", e.target.value)
 								}
-								className="h-12 text-base border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-red-300 focus:border-red-500 transition-all duration-200"
+								className={`h-12 text-base border-2 bg-white/80 backdrop-blur-sm transition-all duration-200 ${
+									errors.psi
+										? "border-red-500 focus:border-red-600"
+										: "border-gray-200 hover:border-red-300 focus:border-red-500"
+								}`}
 							/>
+							{errors.psi && (
+								<p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+									<AlertCircle className="h-4 w-4" />
+									{errors.psi}
+								</p>
+							)}
 						</div>
 
 						{/* Temperature */}
@@ -318,8 +366,18 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 								onChange={(e) =>
 									handleInputChange("temp", e.target.value)
 								}
-								className="h-12 text-base border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-orange-300 focus:border-orange-500 transition-all duration-200"
+								className={`h-12 text-base border-2 bg-white/80 backdrop-blur-sm transition-all duration-200 ${
+									errors.temp
+										? "border-red-500 focus:border-red-600"
+										: "border-gray-200 hover:border-orange-300 focus:border-orange-500"
+								}`}
 							/>
+							{errors.temp && (
+								<p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+									<AlertCircle className="h-4 w-4" />
+									{errors.temp}
+								</p>
+							)}
 						</div>
 
 						{/* PSI Out */}
@@ -340,8 +398,18 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 								onChange={(e) =>
 									handleInputChange("psiOut", e.target.value)
 								}
-								className="h-12 text-base border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-indigo-300 focus:border-indigo-500 transition-all duration-200"
+								className={`h-12 text-base border-2 bg-white/80 backdrop-blur-sm transition-all duration-200 ${
+									errors.psiOut
+										? "border-red-500 focus:border-red-600"
+										: "border-gray-200 hover:border-indigo-300 focus:border-indigo-500"
+								}`}
 							/>
+							{errors.psiOut && (
+								<p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+									<AlertCircle className="h-4 w-4" />
+									{errors.psiOut}
+								</p>
+							)}
 						</div>
 
 						{/* Flow Turbine */}
@@ -365,8 +433,18 @@ export function DataEntryForm({ customerCode, onSuccess }: DataEntryFormProps) {
 										e.target.value
 									)
 								}
-								className="h-12 text-base border-2 border-gray-200 bg-white/80 backdrop-blur-sm hover:border-cyan-300 focus:border-cyan-500 transition-all duration-200"
+								className={`h-12 text-base border-2 bg-white/80 backdrop-blur-sm transition-all duration-200 ${
+									errors.flowTurbine
+										? "border-red-500 focus:border-red-600"
+										: "border-gray-200 hover:border-cyan-300 focus:border-cyan-500"
+								}`}
 							/>
+							{errors.flowTurbine && (
+								<p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+									<AlertCircle className="h-4 w-4" />
+									{errors.flowTurbine}
+								</p>
+							)}
 						</div>
 					</div>
 

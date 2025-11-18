@@ -1,4 +1,3 @@
-// components\dumping-form.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -20,13 +19,17 @@ import {
 	useProcessedReadingsByCustomer,
 } from "@/hooks/use-readings";
 import { useStoragesForOperator } from "@/hooks/use-storages";
-import { ArrowRight, Save, Wind, Loader2 } from "lucide-react";
+import { dumpingFormSchema, type TDumpingFormSchema } from "@/lib/schemas";
+import { ArrowRight, Save, Wind, Loader2, AlertCircle } from "lucide-react";
 import type { NewDumpingData, ReadingWithFlowMeter } from "@/types/data";
 
 interface DumpingFormProps {
 	customerCode: string;
 	onSuccess?: () => void;
 }
+
+// Tipe untuk error messages per field
+type FieldErrors = Partial<Record<keyof TDumpingFormSchema, string>>;
 
 const initialFormData = {
 	source_storage_number: "",
@@ -48,15 +51,19 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 	const { user } = useAuth();
 	const { data: storages = [], isLoading: isLoadingStorages } =
 		useStoragesForOperator(customerCode);
-	const { data: readings = [] } =
-		useProcessedReadingsByCustomer(customerCode , "all");
+	const { data: readings = [] } = useProcessedReadingsByCustomer(
+		customerCode,
+		"all"
+	);
 	const { mutate: addDumping, isPending: isSubmitting } = useAddDumping();
 
 	const [formData, setFormData] = useState(initialFormData);
+	const [errors, setErrors] = useState<FieldErrors>({});
 
 	// Reset form jika customer berubah
 	useEffect(() => {
 		setFormData(initialFormData);
+		setErrors({});
 	}, [customerCode]);
 
 	// Efek untuk MENGISI OTOMATIS form saat pertama kali dibuka
@@ -74,12 +81,11 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 
 			if (validReadings.length === 0) return;
 
-			// Tentukan TUJUAN: storage yang paling terakhir digunakan
+			// storage yang paling terakhir digunakan
 			const lastUsedStorageNumber =
 				validReadings[validReadings.length - 1].storage_number;
 
 			// Update state form dengan nilai tujuan yang sudah ditentukan
-			// Storage sumber dibiarkan kosong
 			if (lastUsedStorageNumber) {
 				setFormData((prev) => ({
 					...prev,
@@ -92,6 +98,9 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 
 	const handleInputChange = (field: keyof typeof formData, value: string) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
+		if (errors[field as keyof TDumpingFormSchema]) {
+			setErrors((prev) => ({ ...prev, [field]: undefined }));
+		}
 	};
 
 	const handleSubmit = (e: React.FormEvent) => {
@@ -103,37 +112,52 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 			return;
 		}
 
-		// Validasi sederhana
-		for (const key in formData) {
-			if (formData[key as keyof typeof formData] === "") {
-				toast.error("Validation Error", {
-					description: `Mohon isi semua field. Field '${key}' kosong.`,
-				});
-				return;
-			}
+		// Validasi menggunakan Zod schema
+		const validationResult = dumpingFormSchema.safeParse(formData);
+
+		if (!validationResult.success) {
+			// Parse Zod errors dan tampilkan ke user
+			const fieldErrors: FieldErrors = {};
+			validationResult.error.issues.forEach((issue) => {
+				const fieldName = issue.path[0] as keyof TDumpingFormSchema;
+				if (fieldName) {
+					fieldErrors[fieldName] = issue.message;
+				}
+			});
+			setErrors(fieldErrors);
+
+			toast.error("Validasi Gagal", {
+				description: "Mohon perbaiki field yang ditandai merah",
+			});
+			return;
 		}
+
+		// Data sudah valid, lanjutkan proses submit
+		const validatedData = validationResult.data;
 
 		const submissionData: NewDumpingData = {
 			customer_code: customerCode,
 			operator_id: user.id,
-			source_storage_number: formData.source_storage_number,
-			destination_storage_number: formData.destination_storage_number,
-			source_psi_before: parseFloat(formData.source_psi_before),
-			source_psi_after: parseFloat(formData.source_psi_after),
-			destination_psi_after: parseFloat(formData.destination_psi_after),
-			source_temp_before: parseFloat(formData.source_temp_before),
-			source_temp_after: parseFloat(formData.source_temp_after),
-			destination_temp: parseFloat(formData.destination_temp),
-			flow_turbine_before: parseFloat(formData.flow_turbine_before),
-			flow_turbine_after: parseFloat(formData.flow_turbine_after),
-			psi_out: parseFloat(formData.psi_out),
-			time_before: formData.time_before,
-			time_after: formData.time_after,
+			source_storage_number: validatedData.source_storage_number,
+			destination_storage_number:
+				validatedData.destination_storage_number,
+			source_psi_before: validatedData.source_psi_before,
+			source_psi_after: validatedData.source_psi_after,
+			destination_psi_after: validatedData.destination_psi_after,
+			source_temp_before: validatedData.source_temp_before,
+			source_temp_after: validatedData.source_temp_after,
+			destination_temp: validatedData.destination_temp,
+			flow_turbine_before: validatedData.flow_turbine_before,
+			flow_turbine_after: validatedData.flow_turbine_after,
+			psi_out: validatedData.psi_out,
+			time_before: validatedData.time_before,
+			time_after: validatedData.time_after,
 		};
 
 		addDumping(submissionData, {
 			onSuccess: () => {
 				setFormData(initialFormData);
+				setErrors({});
 				onSuccess?.();
 			},
 		});
@@ -155,7 +179,8 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 					<div className="flex items-end gap-4">
 						<div className="flex-1 space-y-2">
 							<Label htmlFor="source_storage_number">
-								Storage Sumber
+								Storage Sumber{" "}
+								<span className="text-red-500">*</span>
 							</Label>
 							<Select
 								value={formData.source_storage_number}
@@ -166,7 +191,12 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 									)
 								}
 								disabled={isLoadingStorages}>
-								<SelectTrigger>
+								<SelectTrigger
+									className={
+										errors.source_storage_number
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}>
 									<SelectValue placeholder="Pilih sumber..." />
 								</SelectTrigger>
 								<SelectContent>
@@ -179,11 +209,18 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 									))}
 								</SelectContent>
 							</Select>
+							{errors.source_storage_number && (
+								<p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+									<AlertCircle className="h-4 w-4" />
+									{errors.source_storage_number}
+								</p>
+							)}
 						</div>
 						<ArrowRight className="h-6 w-6 text-gray-500 mb-2" />
 						<div className="flex-1 space-y-2">
 							<Label htmlFor="destination_storage_number">
-								Storage Tujuan
+								Storage Tujuan{" "}
+								<span className="text-red-500">*</span>
 							</Label>
 							<Select
 								value={formData.destination_storage_number}
@@ -194,7 +231,12 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 									)
 								}
 								disabled={isLoadingStorages}>
-								<SelectTrigger>
+								<SelectTrigger
+									className={
+										errors.destination_storage_number
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}>
 									<SelectValue placeholder="Pilih tujuan..." />
 								</SelectTrigger>
 								<SelectContent>
@@ -207,6 +249,12 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 									))}
 								</SelectContent>
 							</Select>
+							{errors.destination_storage_number && (
+								<p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+									<AlertCircle className="h-4 w-4" />
+									{errors.destination_storage_number}
+								</p>
+							)}
 						</div>
 					</div>
 
@@ -218,7 +266,10 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 								Sebelum Dumping
 							</h3>
 							<div className="space-y-2">
-								<Label>Waktu Mulai</Label>
+								<Label>
+									Waktu Mulai{" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="time"
 									value={formData.time_before}
@@ -228,10 +279,24 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.time_before
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.time_before && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.time_before}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
-								<Label>Pressure Sumber</Label>
+								<Label>
+									Pressure Sumber{" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="number"
 									step="0.1"
@@ -243,10 +308,24 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.source_psi_before
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.source_psi_before && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.source_psi_before}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
-								<Label>Temp Sumber</Label>
+								<Label>
+									Temp Sumber{" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="number"
 									step="0.1"
@@ -258,10 +337,24 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.source_temp_before
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.source_temp_before && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.source_temp_before}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
-								<Label>Flow/Turbin</Label>
+								<Label>
+									Flow/Turbin{" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="number"
 									step="0.1"
@@ -273,7 +366,18 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.flow_turbine_before
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.flow_turbine_before && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.flow_turbine_before}
+									</p>
+								)}
 							</div>
 						</div>
 
@@ -283,7 +387,10 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 								Sesudah Dumping
 							</h3>
 							<div className="space-y-2">
-								<Label>Waktu Selesai</Label>
+								<Label>
+									Waktu Selesai{" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="time"
 									value={formData.time_after}
@@ -293,10 +400,24 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.time_after
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.time_after && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.time_after}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
-								<Label>Pressure Sumber</Label>
+								<Label>
+									Pressure Sumber{" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="number"
 									step="0.1"
@@ -308,10 +429,24 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.source_psi_after
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.source_psi_after && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.source_psi_after}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
-								<Label>Temp Sumber</Label>
+								<Label>
+									Temp Sumber{" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="number"
 									step="0.1"
@@ -323,10 +458,24 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.source_temp_after
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.source_temp_after && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.source_temp_after}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
-								<Label>Flow/Turbin</Label>
+								<Label>
+									Flow/Turbin{" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="number"
 									step="0.1"
@@ -338,7 +487,18 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.flow_turbine_after
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.flow_turbine_after && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.flow_turbine_after}
+									</p>
+								)}
 							</div>
 						</div>
 
@@ -348,7 +508,10 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 								Data Tujuan & Umum
 							</h3>
 							<div className="space-y-2">
-								<Label>Pressure Tujuan (Setelah)</Label>
+								<Label>
+									Pressure Tujuan (Setelah){" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="number"
 									step="0.1"
@@ -360,10 +523,24 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.destination_psi_after
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.destination_psi_after && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.destination_psi_after}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
-								<Label>Temp Tujuan (Setelah)</Label>
+								<Label>
+									Temp Tujuan (Setelah){" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="number"
 									step="0.1"
@@ -375,10 +552,24 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.destination_temp
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.destination_temp && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.destination_temp}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
-								<Label>Pressure Out</Label>
+								<Label>
+									Pressure Out{" "}
+									<span className="text-red-500">*</span>
+								</Label>
 								<Input
 									type="number"
 									step="0.1"
@@ -390,7 +581,18 @@ export function DumpingForm({ customerCode, onSuccess }: DumpingFormProps) {
 											e.target.value
 										)
 									}
+									className={
+										errors.psi_out
+											? "border-red-500 focus:ring-red-500"
+											: ""
+									}
 								/>
+								{errors.psi_out && (
+									<p className="text-sm text-red-600 flex items-center gap-1">
+										<AlertCircle className="h-4 w-4" />
+										{errors.psi_out}
+									</p>
+								)}
 							</div>
 						</div>
 					</div>
