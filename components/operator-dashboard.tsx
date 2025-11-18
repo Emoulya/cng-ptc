@@ -34,7 +34,7 @@ export function OperatorDashboard() {
 	const [selectedCustomer, setSelectedCustomer] = useState<string>("");
 	const [timeRange, setTimeRange] = useState<
 		"day" | "week" | "month" | "all"
-	>("week");
+	>("day");
 
 	const [showDataEntry, setShowDataEntry] = useState(false);
 	const [showDataTable, setShowDataTable] = useState(false);
@@ -79,7 +79,7 @@ export function OperatorDashboard() {
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
 			{/* Header */}
-			<div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 sticky top-0 z-10 shadow-lg backdrop-blur-sm">
+			<div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 sticky top-0 z-50 shadow-lg backdrop-blur-sm">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-3">
 						<div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
