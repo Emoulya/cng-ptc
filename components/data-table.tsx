@@ -10,6 +10,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { formatNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -159,7 +160,9 @@ export function DataTable({ customerCode, timeRange }: DataTableProps) {
 											</TableCell>
 											<TableCell colSpan={4}></TableCell>
 											<TableCell>
-												{Math.round(row.totalFlow)}
+												{formatNumber(
+													Math.round(row.totalFlow)
+												)}
 											</TableCell>
 											<TableCell colSpan={2}></TableCell>
 										</TableRow>
@@ -185,7 +188,11 @@ export function DataTable({ customerCode, timeRange }: DataTableProps) {
 											</TableCell>
 											<TableCell colSpan={4}></TableCell>
 											<TableCell>
-												{Math.round(summary.totalFlow)}
+												{formatNumber(
+													Math.round(
+														summary.totalFlow
+													)
+												)}
 											</TableCell>
 											<TableCell colSpan={2}></TableCell>
 										</TableRow>
@@ -213,7 +220,9 @@ export function DataTable({ customerCode, timeRange }: DataTableProps) {
 											</TableCell>
 											<TableCell colSpan={4}></TableCell>
 											<TableCell>
-												{Math.round(summary.totalFlow)}
+												{formatNumber(
+													summary.totalFlow
+												)}
 											</TableCell>
 											<TableCell colSpan={2}></TableCell>
 										</TableRow>
@@ -252,16 +261,16 @@ export function DataTable({ customerCode, timeRange }: DataTableProps) {
 										<TableCell>{date}</TableCell>
 										<TableCell>{time}</TableCell>
 										<TableCell>
-											{String(reading.psi)}
+											{formatNumber(reading.psi)}
 										</TableCell>
 										<TableCell>
-											{String(reading.temp)}°C
+											{formatNumber(reading.temp)}°C
 										</TableCell>
 										<TableCell>
-											{String(reading.psi_out)}
+											{formatNumber(reading.psi_out)}
 										</TableCell>
 										<TableCell>
-											{String(reading.flow_turbine)}
+											{formatNumber(reading.flow_turbine)}
 										</TableCell>
 										<TableCell
 											className={
@@ -271,7 +280,7 @@ export function DataTable({ customerCode, timeRange }: DataTableProps) {
 													? "text-red-600 font-medium"
 													: ""
 											}>
-											{reading.flowMeter}
+											{formatNumber(reading.flowMeter)}
 										</TableCell>
 										<TableCell className="text-sm max-w-[150px]">
 											{reading.remarks || "-"}

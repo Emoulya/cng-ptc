@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Loader2 } from "lucide-react";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { TimeRangeAnalytics } from "./TimeRangeAnalytics";
+import { formatNumber } from "@/lib/utils";
 
 export function AdminAnalytics() {
 	// Panggil hook untuk mengambil data yang sudah diproses dari backend
@@ -49,7 +50,7 @@ export function AdminAnalytics() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{analyticsData.totalReadings}
+							{formatNumber(analyticsData.totalReadings)}
 						</div>
 						<p className="text-xs text-muted-foreground">
 							Sepanjang waktu
@@ -65,7 +66,7 @@ export function AdminAnalytics() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{analyticsData.avgPSI}
+							{formatNumber(analyticsData.avgPSI)}
 						</div>
 						<p className="text-xs text-muted-foreground">
 							Rata-rata dari semua data
@@ -81,7 +82,7 @@ export function AdminAnalytics() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{analyticsData.avgTemp}°C
+							{formatNumber(analyticsData.avgTemp)}°C
 						</div>
 						<p className="text-xs text-muted-foreground">
 							Rata-rata dari semua data
@@ -97,7 +98,7 @@ export function AdminAnalytics() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{analyticsData.avgFlow}
+							{formatNumber(analyticsData.avgFlow)}
 						</div>
 						<p className="text-xs text-muted-foreground">
 							Rata-rata dari semua data

@@ -1,4 +1,3 @@
-// cng-ptc/components/admin-data-management.tsx
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -18,6 +17,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { formatNumber } from "@/lib/utils";
 import {
 	Table,
 	TableBody,
@@ -1333,8 +1333,10 @@ export function AdminDataManagement() {
 																			4
 																		}></TableCell>
 																	<TableCell>
-																		{Math.round(
-																			row.totalFlow
+																		{formatNumber(
+																			Math.round(
+																				row.totalFlow
+																			)
 																		)}
 																	</TableCell>
 																	<TableCell
@@ -1382,8 +1384,10 @@ export function AdminDataManagement() {
 																			4
 																		}></TableCell>
 																	<TableCell>
-																		{Math.round(
-																			summary.totalFlow
+																		{formatNumber(
+																			Math.round(
+																				summary.totalFlow
+																			)
 																		)}
 																	</TableCell>
 																	<TableCell
@@ -1432,8 +1436,10 @@ export function AdminDataManagement() {
 																			4
 																		}></TableCell>
 																	<TableCell>
-																		{Math.round(
-																			summary.totalFlow
+																		{formatNumber(
+																			Math.round(
+																				summary.totalFlow
+																			)
 																		)}
 																	</TableCell>
 																	<TableCell
@@ -1581,23 +1587,23 @@ export function AdminDataManagement() {
 																	</Dialog>
 																</TableCell>
 																<TableCell>
-																	{String(
+																	{formatNumber(
 																		reading.psi
 																	)}
 																</TableCell>
 																<TableCell>
-																	{String(
+																	{formatNumber(
 																		reading.temp
 																	)}
 																	°C
 																</TableCell>
 																<TableCell>
-																	{String(
+																	{formatNumber(
 																		reading.psi_out
 																	)}
 																</TableCell>
 																<TableCell>
-																	{String(
+																	{formatNumber(
 																		reading.flow_turbine
 																	)}
 																</TableCell>
@@ -1610,9 +1616,9 @@ export function AdminDataManagement() {
 																			? "text-red-600 font-medium"
 																			: ""
 																	}>
-																	{
+																	{formatNumber(
 																		reading.flowMeter
-																	}
+																	)}
 																</TableCell>
 																<TableCell>
 																	{reading
